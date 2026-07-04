@@ -5,7 +5,8 @@ d = {
         EN: "Action's Name",
         DE: "Fähigkeitsnamen",
         FR: "Nom de l'action",
-        CN: "技能名"
+        CN: "技能名",
+        TW: "技能名"
     },
     general: {
         KR: "일반",
@@ -13,7 +14,8 @@ d = {
         EN: "General",
         FR: "Général",
         DE: "Allgemeines",
-        CN: "一般"
+        CN: "一般",
+        TW: "一般"
     },
     fullscreen: {
         KR: "전체 화면 모드<font class='ex'>　❙ 모바일</font>",
@@ -22,6 +24,7 @@ d = {
         FR: "Mode plein écran<font class='ex'>　❙ Mobile</font>",
         DE: "Vollbild Modus<font class='ex'>　❙ Handy</font>",
         CN: "全屏模式<font class='ex'>　❙ 移动端</font>",
+        TW: "全屏模式<font class='ex'>　❙ 移動端</font>",
     },
     More: {
         KR: '더보기',
@@ -30,6 +33,7 @@ d = {
         FR: "Plus",
         DE: 'Mehr',
         CN: "更多",
+        TW: "更多",
     },
     Back: {
         KR: '뒤로',
@@ -38,6 +42,7 @@ d = {
         FR: "Arrière",
         DE: 'Zurück',
         CN: "返回",
+        TW: "返回",
     },
     settings: {
         KR: "설정",
@@ -46,6 +51,7 @@ d = {
         FR: "Paramètres",
         DE: "Einstellungen",
         CN: "设置",
+        TW: "設置",
     },
     Capture: {
         KR: "캡쳐<font class='ex'>　❙ PC, ACTWebSocket</font>",
@@ -54,6 +60,7 @@ d = {
         FR: "Screenshot<font class='ex'>　❙ PC, ACTWebSocket</font>",
         DE: "Screenshot<font class='ex'>　❙ PC, ACTWebSocket</font>",
         CN: "截图<font class='ex'>　❙ PC, ACTWebSocket</font>",
+        TW: "截圖<font class='ex'>　❙ PC, ACTWebSocket</font>",
     },
     Data: {
         KR: "데이터",
@@ -62,6 +69,7 @@ d = {
         FR: "Données",
         DE: "Daten",
         CN: "数据",
+        TW: "數據",
     },
     int: {
         KR: "정수",
@@ -70,6 +78,7 @@ d = {
         FR: "Entier",
         DE: "Integer",
         CN: "整数",
+        TW: "整數",
     },
     float: {
         KR: "소수",
@@ -78,6 +87,7 @@ d = {
         FR: "Décimal",
         DE: "Dezimal",
         CN: "小数",
+        TW: "小數",
     },
     ".": {
         KR: ".",
@@ -86,6 +96,7 @@ d = {
         FR: ".",
         DE: ".",
         CN: ".",
+        TW: ".",
     },
     ",": {
         KR: ",",
@@ -94,6 +105,7 @@ d = {
         FR: ",",
         DE: ",",
         CN: ",",
+        TW: ",",
     },
     "_": {
         KR: "공백",
@@ -102,6 +114,7 @@ d = {
         FR: "Espace",
         DE: "Leerzeichen",
         CN: "空白",
+        TW: "空白",
     },
     "'": {
         KR: "'",
@@ -110,6 +123,7 @@ d = {
         FR: "'",
         DE: "'",
         CN: "'",
+        TW: "'",
     },
     noUse: {
         KR: "사용 안 함",
@@ -118,6 +132,16 @@ d = {
         FR: "Désactivé",
         DE: "Deaktivieren",
         CN: "禁用",
+        TW: "禁用",
+    },
+    0: {
+        KR: '0',
+        JP: '0',
+        EN: '0',
+        FR: '0',
+        DE: '0',
+        CN: "0",
+        TW: "0",
     },
     1: {
         KR: '1',
@@ -126,6 +150,7 @@ d = {
         FR: '1',
         DE: '1',
         CN: "1",
+        TW: "1",
     },
     2: {
         KR: '2',
@@ -134,6 +159,7 @@ d = {
         FR: '2',
         DE: '2',
         CN: "2",
+        TW: "2",
     },
     dpsTable: {
         KR: "DPS 테이블",
@@ -142,6 +168,7 @@ d = {
         FR: "Tableau DPS",
         DE: "DPS Tabelle",
         CN: "DPS 表",
+        TW: "DPS 表",
     },
     hpsTable: {
         KR: "HPS 테이블",
@@ -149,7 +176,8 @@ d = {
         EN: "HPS Table",
         FR: "Tableau HPS",
         DE: "HPS Tabelle",
-        CN: "HPS 表"
+        CN: "HPS 表",
+        TW: "HPS 表"
     },
     jobFilter: {
         KR: "직업 필터",
@@ -158,6 +186,7 @@ d = {
         FR: "Filtre de Job",
         DE: "Job Filter",
         CN: "职业过滤",
+        TW: "職業過濾",
     },
     filter_tank: {
         KR: "방어",
@@ -166,6 +195,7 @@ d = {
         FR: "Tank",
         DE: "Verteidiger",
         CN: "防护职业",
+        TW: "防護職業",
     },
     filter_healer: {
         KR: "회복",
@@ -174,6 +204,7 @@ d = {
         FR: "Soigneur",
         DE: "Heiler",
         CN: "治疗职业",
+        TW: "治療職業",
     },
     filter_DPS: {
         KR: "공격",
@@ -182,6 +213,7 @@ d = {
         FR: "DPS",
         DE: "Angreifer",
         CN: "进攻职业",
+        TW: "進攻職業",
     },
     filter_CL: {
         KR: "제작자 & 채집가",
@@ -190,6 +222,7 @@ d = {
         FR: "Disciples de la Main/Terre",
         DE: "Handwerker & Sammler",
         CN: "能工巧匠 & 大地使者",
+        TW: "能工巧匠 & 大地使者",
     },
     filter_cbo: {
         KR: "초코보",
@@ -198,6 +231,7 @@ d = {
         FR: "Chocobo",
         DE: "Chocobo",
         CN: "陆行鸟",
+        TW: "陸行鳥",
     },
     caution_tt: {
         KR: "설정 전 주의사항",
@@ -206,6 +240,7 @@ d = {
         FR: "Lisez moi en premier",
         DE: "Erst alles genau durchlesen, dann Einstellungen vornehmen!",
         CN: "设置前的注意事项",
+        TW: "設置前的注意事項",
     },
     caution_m1: {
         KR: '<br>키보드로 직접 입력 시,<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ 오버레이 관리자 ❯ 설정 ❯ <font class="ac"><b>키 입력 무시, 자동 숨기기(~~.exe)</b> 체크 해제</font> 필수입니다.',
@@ -214,6 +249,7 @@ d = {
         FR: '<br>Pour saisir directement des valeurs,<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac">DESACTIVE <b>No Focus</b></font>',
         DE: '<br>Wenn du direkt schreiben möchtest, gehe wie folgt vor:,<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac">DEAKTIVIERE <b>No Focus</b></font>',
         CN: '<br>在键盘输入的情况下，<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac"><b>No Focus</b> 请取消勾选。</font>',
+        TW: '<br>在鍵盤輸入的情况下，<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac"><b>No Focus</b> 請取消勾選。</font>',
     },
     caution_m2: {
         KR: '<br>키보드로 직접 입력 시,<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ 오버레이 관리자 ❯ 설정 ❯ <font class="ac"><b>키 입력 무시, 자동 숨기기(~~.exe)</b> 체크 해제</font> 필수입니다.<br><br><font class="ac">❖ 모바일 환경에서는 해당 기능을 지원하지 않습니다.<br>❖ 글꼴 이름만 입력합니다. (글꼴 스타일 제외)<br>❖ 글꼴 파일이 손상됐거나 글꼴 이름을 잘못 입력한 경우 기본값으로 적용합니다.</font>',
@@ -222,6 +258,7 @@ d = {
         FR: '<br>Pour saisir directement des valeurs,<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac">DESACTIVE <b>No Focus</b></font><br><br><font class="ac">❖ Cette fonction est indisponible pour l\'environement sur mobile.<br>❖ Vous devez seulement saisir le nom de la police. (EXCEPTE le style de police)<br>❖ Si la police est corrompue  ou que le nom est incorrect, la valeur par défaut sera appliquée.</font>',
         DE: '<br>Wenn du direkt schreiben möchtest, gehe wie folgt vor:,<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac">DEAKTIVIERE <b>No Focus</b></font><br><br><font class="ac">❖ Dieses Feature wird nicht in der mobilen Umgebung unterstützt.<br>❖ Nur den Schriftart-Namen eintragen. (AUSNAHME: Schriftstil)<br>❖ Falls die Datei der Schriftart beschädigt oder der Name falsch geschrieben ist, wird die Standard-Schriftart angewendet.</font>',
         CN: '<br>在键盘输入的情况下，<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac"><b>No Focus</b> 请取消勾选。</font><br><br><font class="ac">❖ 移动端不支持此功能。<br>❖ 您只能输入字体名称。 (除字体样式外)<br>❖ 如果字体文损坏或者不存在，则使用默认字体。</font>',
+        TW: '<br>在鍵盤輸入的情况下，<br>ACT ❯ Plugins ❯ ACTWebSocket ❯ Open Manager ❯ Preferences ❯ <font class="ac"><b>No Focus</b> 請取消勾選。</font><br><br><font class="ac">❖ 移動端不支持此功能。<br>❖ 您只能輸入字體名稱。 (除字體樣式外)<br>❖ 如果字體文損壞或者不存在，則使用默認字體。</font>',
     },
     input_font: {
         m: {
@@ -231,6 +268,7 @@ d = {
             FR: "Nom de police",
             DE: "Schriftart-Namen",
             CN: "字体名字",
+            TW: "字體名字",
         },
         i: 'text_fields',
         e: 'li_text_inbtn',
@@ -243,6 +281,7 @@ d = {
         FR: "Navigation",
         DE: "Navigationsleiste",
         CN: "导航",
+        TW: "導航",
     },
     navBg: {
         KR: "배경",
@@ -251,6 +290,7 @@ d = {
         FR: "Arrière plan",
         DE: "Hintergrund",
         CN: "背景",
+        TW: "背景",
     },
     pattern: {
         KR: "패턴",
@@ -259,6 +299,7 @@ d = {
         FR: "Modèle",
         DE: "Muster",
         CN: "图案",
+        TW: "圖案",
     },
     edge: {
         KR: "테두리",
@@ -267,6 +308,7 @@ d = {
         FR: "Bordure",
         DE: "Rand",
         CN: "边框",
+        TW: "邊框",
     },
     jobIcon: {
         KR: "아이콘<font class='ex'>　❙ 클래스 또는 직업</font>",
@@ -275,6 +317,7 @@ d = {
         FR: "Icône<font class='ex'>　❙ Classe ou Job</font>",
         DE: "Symbole<font class='ex'>　❙ Klassen/Job</font>",
         CN: "图标<font class='ex'>　❙ 玩家职业图标</font>",
+        TW: "圖標<font class='ex'>　❙ 玩家職業圖標</font>",
     },
     rps: {
         KR: "데이터",
@@ -283,6 +326,7 @@ d = {
         FR: "Données",
         DE: "Daten",
         CN: "数据",
+        TW: "數據",
     },
     table: {
         KR: "테이블",
@@ -291,6 +335,7 @@ d = {
         FR: "Tableau",
         DE: "Tabellen",
         CN: "表",
+        TW: "表",
     },
     graph: {
         KR: "그래프",
@@ -299,6 +344,7 @@ d = {
         FR: "Graphique",
         DE: "Graphen",
         CN: "图表",
+        TW: "圖表",
     },
     time: {
         KR: "시간",
@@ -307,6 +353,7 @@ d = {
         FR: "Temps",
         DE: "Zeit",
         CN: "时间",
+        TW: "時间",
     },
     target: {
         KR: "대상",
@@ -315,6 +362,7 @@ d = {
         FR: "Cible",
         DE: "Ziel",
         CN: "目标",
+        TW: "目標",
     },
     icon: {
         KR: "아이콘",
@@ -323,6 +371,7 @@ d = {
         FR: "Icône",
         DE: "Symbole",
         CN: "图标",
+        TW: "圖標",
     },
     header: {
         KR: "헤더",
@@ -331,6 +380,7 @@ d = {
         FR: "Entête",
         DE: "Kopf",
         CN: "头部",
+        TW: "頭部",
     },
     headerText: {
         KR: "헤더 글자",
@@ -339,6 +389,7 @@ d = {
         FR: "Texte d\'entête",
         DE: "Text auf den Kopf",
         CN: "头部文字",
+        TW: "頭部文字",
     },
     body: {
         KR: "바디",
@@ -347,6 +398,7 @@ d = {
         FR: "Corps",
         DE: "Hauptteil",
         CN: "主体",
+        TW: "主體",
     },
     line_ho: {
         KR: "구분선<font class='ex'>　❙ 가로</font>",
@@ -355,6 +407,7 @@ d = {
         FR: "Ligne de séparation<font class='ex'>　❙ Horizontale</font>",
         DE: "Trennlinien<font class='ex'>　❙ Horizontal</font>",
         CN: "分界线<font class='ex'>　❙ 横</font>",
+        TW: "分界線<font class='ex'>　❙ 橫</font>",
     },
     line_ve: {
         KR: "구분선<font class='ex'>　❙ 세로</font>",
@@ -363,6 +416,7 @@ d = {
         FR: "Ligne de séparation<font class='ex'>　❙ Verticale</font>",
         DE: "Trennlinien<font class='ex'>　❙ Vertical</font>",
         CN: "分界线<font class='ex'>　❙ 竖</font>",
+        TW: "分界線<font class='ex'>　❙ 豎</font>",
     },
     bodyYOU: {
         KR: "배경<font class='ex'>　❙ 내 캐릭터 </font>",
@@ -371,6 +425,7 @@ d = {
         FR: "Arrière plan<font class='ex'>　❙ Mon personnage</font>",
         DE: "Hintergrund<font class='ex'>　❙ Eigenen Charakter</font>",
         CN: "背景<font class='ex'>　❙ 自己角色 </font>",
+        TW: "背景<font class='ex'>　❙ 自己角色 </font>",
     },
     bodyOther: {
         KR: "배경<font class='ex'>　❙ 타 캐릭터</font>",
@@ -379,6 +434,7 @@ d = {
         FR: "Arrière plan<font class='ex'>　❙ Autre personnage</font>",
         DE: "Hintergrund<font class='ex'>　❙ Andere Charaktere</font>",
         CN: "背景<font class='ex'>　❙ 其他角色 </font>",
+        TW: "背景<font class='ex'>　❙ 其他角色 </font>",
     },
     itYOU: {
         KR: "아이콘, 글자<font class='ex'>　❙ 내 캐릭터</font>",
@@ -386,7 +442,8 @@ d = {
         EN: "Icon, Text<font class='ex'>　❙ My Character</font>",
         FR: "Icône, Text<font class='ex'>　❙ Mon personnage</font>",
         DE: "Symbole, Text<font class='ex'>　❙ Eigenen Charakter</font>",
-        CN: "图标，文字<font class='ex'>　❙ 自己角色</font>"
+        CN: "图标，文字<font class='ex'>　❙ 自己角色</font>",
+        TW: "圖標，文字<font class='ex'>　❙ 自己角色</font>"
     },
     itOther: {
         KR: "아이콘, 글자<font class='ex'>　❙ 타 캐릭터</font>",
@@ -394,7 +451,8 @@ d = {
         EN: "Icon, Text<font class='ex'>　❙ Other Character</font>",
         FR: "Icône, Text<font class='ex'>　❙ Autre personnage</font>",
         DE: "Symbole, Text<font class='ex'>　❙ Andere Charaktere</font>",
-        CN: "图标，文字<font class='ex'>　❙ 其他角色</font>"
+        CN: "图标，文字<font class='ex'>　❙ 其他角色</font>",
+        TW: "圖標，文字<font class='ex'>　❙ 其他角色</font>"
     },
     radius: {
         tt: {
@@ -404,6 +462,7 @@ d = {
             FR: "Rayon",
             DE: "Radius",
             CN: "半径",
+            TW: "半径",
         },
         min: 0,
         max: 50,
@@ -419,6 +478,7 @@ d = {
             FR: "Haut-Gauche",
             DE: "Oben-Links",
             CN: "左上",
+            TW: "左上",
         },
         i: "looks_one",
         e: "li_checkbox",
@@ -432,6 +492,7 @@ d = {
             FR: "Haut-Droit",
             DE: "Oben-Rechts",
             CN: "右上",
+            TW: "右上",
         },
         i: "looks_two",
         e: "li_checkbox",
@@ -445,6 +506,7 @@ d = {
             FR: "Bas-Gauche",
             DE: "Unten-Links",
             CN: "左下",
+            TW: "左下",
         },
         i: "looks_3",
         e: "li_checkbox",
@@ -458,6 +520,7 @@ d = {
             FR: "Bas-Droit",
             DE: "Unten-Rechts",
             CN: "右下",
+            TW: "右下",
         },
         i: "looks_4",
         e: "li_checkbox",
@@ -471,6 +534,7 @@ d = {
             FR: "Gauche",
             DE: "Links",
             CN: "左",
+            TW: "左",
         },
         center: {
             KR: "가운데",
@@ -479,6 +543,7 @@ d = {
             FR: "Centre",
             DE: "Zentriert",
             CN: "居中",
+            TW: "居中",
         },
         right: {
             KR: "오른쪽",
@@ -487,6 +552,7 @@ d = {
             FR: "Droite",
             DE: "Rechts",
             CN: "右",
+            TW: "右",
         }
     },
     palette: {
@@ -497,6 +563,7 @@ d = {
             FR: "Palette",
             DE: "Palette",
             CN: "调色板",
+            TW: "調色板",
         },
         m: {
             job: {
@@ -506,6 +573,7 @@ d = {
                 FR: "Job",
                 DE: "Job",
                 CN: "职业",
+                TW: "職業",
             },
             role: {
                 KR: "역할",
@@ -514,6 +582,7 @@ d = {
                 FR: "Rôle",
                 DE: "Rolle",
                 CN: "角色",
+                TW: "角色",
             },
             meYou: {
                 KR: "내 캐릭터 & 타 캐릭터",
@@ -522,6 +591,7 @@ d = {
                 FR: "Mon personnage & Autre personnage",
                 DE: "Eigenen Charakter & Andere Charaktere",
                 CN: "自己角色 & 其他角色",
+                TW: "自己角色 & 其他角色",
             }
         },
         i: "palette",
@@ -537,6 +607,7 @@ d = {
             FR: "Appliquer la couleur pour mon personnage",
             DE: "Eigene Farbe für eigenen Charakter",
             CN: "固定自己角色的颜色",
+            TW: "固定自己角色的顏色",
         },
         i: "person",
         e: "li_checkbox",
@@ -550,6 +621,7 @@ d = {
             FR: "Mon personnage",
             DE: "Mein Charakter",
             CN: "自己角色",
+            TW: "自己角色",
         },
         i: "format_color_fill",
         e: "li_color",
@@ -562,6 +634,7 @@ d = {
         FR: "Utilisateur<font class='ex'>　❙ Transcendance, Chocobo, etc.</font>",
         DE: "Benutzer<font class='ex'>　❙ Limitrausch, Chocobo, etc.</font>",
         CN: "用户<font class='ex'>　❙ 极限技，陆行鸟等</font>",
+        TW: "用户<font class='ex'>　❙ 極限技，陸行鳥等</font>",
     },
     graph_pet: {
         KR: "소환수<font class='ex'>　❙ 소환수 데이터 합산하기 'ON'</font>",
@@ -570,6 +643,7 @@ d = {
         FR: "Familier<font class='ex'>　❙ Combiner les familiers avec le propriétaire 'ON'</font>",
         DE: "Begleiter<font class='ex'>　❙ Charakter und Begleiter zusammenfassen 'ON'</font>",
         CN: "召唤物<font class='ex'>　❙ 召唤物与自身数据合并 'ON'</font>",
+        TW: "召喚物<font class='ex'>　❙ 召喚物與自身數據合併 'ON'</font>",
     },
     graph_shield: {
         KR: "D.Shield",
@@ -578,6 +652,7 @@ d = {
         FR: "D.Shield",
         DE: "D.Shield",
         CN: "D.Shield",
+        TW: "D.Shield",
     },
     graph_overheal: {
         KR: "OverHeal",
@@ -586,6 +661,7 @@ d = {
         FR: "OverHeal",
         DE: "OverHeal",
         CN: "OverHeal",
+        TW: "OverHeal",
     },
     LMB: {
         tt: {
@@ -595,6 +671,7 @@ d = {
             FR: "Transcendance",
             DE: "Limitrausch",
             CN: "极限技",
+            TW: "極限技",
         },
         i: "<img src='./images/icon/frame/LMB.png'/>",
         e: "li_color",
@@ -608,6 +685,7 @@ d = {
             FR: "Chocobo",
             DE: "Chocobo",
             CN: "陆行鸟",
+            TW: "陸行鳥",
         },
         i: "<img src='./images/icon/frame/CBO.png'/>",
         e: "li_color",
@@ -622,6 +700,7 @@ d = {
             FR: "Icône de Classe/Job du joueur",
             DE: "Klassen/Job-Icon des Kämpfers.",
             CN: "玩家职业图标",
+            TW: "玩家職業圖標",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -635,6 +714,7 @@ d = {
             FR: "Nom du combatant.",
             DE: "Kämpfername.",
             CN: "角色名称",
+            TW: "角色名稱",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -648,6 +728,7 @@ d = {
             FR: "Durée du combatant.",
             DE: "Kampfzeit des Charakters.",
             CN: "战斗日志收集时间<br><span class='ac'> = 自己开始攻击时</span>",
+            TW: "戰鬥日志收集時间<br><span class='ac'> = 自己開始攻擊時</span>",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -661,6 +742,7 @@ d = {
             FR: "Dégâts totaux du combatant divisé par la durée personnelle.",
             DE: "Gesamtschaden der Person dividiert durch die persönliche Kampfzeit.",
             CN: "每秒伤害<br><span class='ac'> = 战斗总伤害除以个人战斗时间</span>",
+            TW: "每秒傷害<br><span class='ac'> = 戰鬥总傷害除以個人戰鬥時间</span>",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -674,6 +756,7 @@ d = {
             FR: "Durée du combat",
             DE: "Die Kampfzeit.",
             CN: "战斗日志收集时间<br><span class='ac'> = 队伍开始攻击时</span>",
+            TW: "戰鬥日志收集時间<br><span class='ac'> = 隊伍開始攻擊時</span>",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -687,6 +770,7 @@ d = {
             FR: "Dégats totaux du combatant divisé par la durée totale du combat.<br><span class='ac'> = Cette option est plus utilisée que le P.DPS</span>",
             DE: "Gesamtschaden dividiert durch die Kampfzeit.<br><span class='ac'> = Diese Option ist weiter verbreitet als P.DPS.</span>",
             CN: "每秒伤害<br><span class='ac'> = 战斗总伤害除以战斗时间</span>",
+            TW: "每秒傷害<br><span class='ac'> = 戰鬥总傷害除以戰鬥時间</span>",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -700,6 +784,7 @@ d = {
             FR: "DPS moyen pour les 10 dernières secondes.",
             DE: "Durchschnittlicher DPS der letzten 10 Sekunden.",
             CN: "最近10秒内的平均DPS",
+            TW: "最近10秒内的平均DPS",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -713,6 +798,7 @@ d = {
             FR: "DPS moyen pour les 30 dernières secondes.",
             DE: "Durchschnittlicher DPS der letzten 30 Sekunden.",
             CN: "最近30秒内的平均DPS",
+            TW: "最近30秒内的平均DPS",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -726,6 +812,7 @@ d = {
             FR: "DPS moyen pour les 60 dernières secondes.",
             DE: "Durchschnittlicher DPS der letzten 60 Sekunden.",
             CN: "最近60秒内的平均DPS",
+            TW: "最近60秒内的平均DPS",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -739,6 +826,7 @@ d = {
             FR: "DPS moyen pour les 180 dernières secondes.",
             DE: "Durchschnittlicher DPS der letzten 180 Sekunden.",
             CN: "最近180秒内的平均DPS",
+            TW: "最近180秒内的平均DPS",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -752,6 +840,7 @@ d = {
             FR: "Pourcentage de dégâts réalisé par rapport au groupe",
             DE: "Prozentualer Anteil am Gesamtschadens der Gruppe.",
             CN: "在总伤害里自己的伤害占比",
+            TW: "在总傷害里自己的傷害佔比",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -765,6 +854,7 @@ d = {
             FR: "Quantité de dégâts",
             DE: "Summe des verursachten Schadens.",
             CN: "伤害量",
+            TW: "傷害量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -778,6 +868,7 @@ d = {
             FR: "Nombre d\'attaques.<br><span class='ac'> = Cela inclu également les auto-attaques et capacités (y compris celles qui ne réalisent pas de dégats.</span>",
             DE: "Ausgeführte Aktionen.<br><span class='ac'> = Umfasst jede Auto-Attacke und Fähigkeit.</span>",
             CN: "攻击次数<br><span class='ac'> = 包含自动攻击，DOT，技能，以及没有伤害的无效攻击。</span>",
+            TW: "攻擊次數<br><span class='ac'> = 包含自動攻擊，DOT，技能，以及沒有傷害的無效攻擊。</span>",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -791,6 +882,7 @@ d = {
             FR: "Nombres d\'attaques ayant produit des dégâts.",
             DE: "Ausgeführte Aktionen, welche Schaden verursacht haben.",
             CN: "攻击的命中次数",
+            TW: "攻擊的命中次數",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -804,6 +896,7 @@ d = {
             FR: "Nombres d\'attaques ayant produit le message 'Manqué'.",
             DE: "Anzahl der Auto-Attacken oder Fähigkeiten welche nicht getroffen haben.",
             CN: "攻击的失误次数",
+            TW: "攻擊的失誤次數",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -817,6 +910,7 @@ d = {
             FR: "N\'importe quel type d\'attaque échouée mais non manquée.<br><span class='ac'> = Cela inclut les blocages, évitement, résistance, etc.</span>",
             DE: "Anzahl der Attacken, die keinen Schaden verursacht haben, aber kein Miss waren.<br><span class='ac'> = Umfasst: Widerstände, Reflektionen, Ausgeweichen, blocken, usw.</span>",
             CN: "攻击失败次数<br><span class='ac'> = 包括目标的抵抗，反射，阻挡，回避等</span>",
+            TW: "攻擊失敗次數<br><span class='ac'> = 包括目標的抵抗，反射，阻擋，回避等</span>",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -830,6 +924,7 @@ d = {
             FR: "Pourcentage de coups portés.",
             DE: "Prozentuale Treffergenauigkeit.",
             CN: "命中率",
+            TW: "命中率",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -843,6 +938,7 @@ d = {
             FR: "Nombre de coups considérés comme coups nets.",
             DE: "Anzahl der Treffer, die direkt getroffen haben.",
             CN: "直击次数",
+            TW: "直擊次數",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -856,6 +952,7 @@ d = {
             FR: "Pourcentage de coups considérés comme coups nets.",
             DE: "Prozentualer Anteil der Treffer, die direkt getroffen haben.",
             CN: "直击率",
+            TW: "直擊率",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -869,6 +966,7 @@ d = {
             FR: "Nombres d\'attaques critiques.",
             DE: "Anzahl der kritischen Treffer.",
             CN: "暴击次数",
+            TW: "暴擊次數",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -882,6 +980,7 @@ d = {
             FR: "Pourcentage de coups critiques.",
             DE: "Prozentualer Anteil der kritischen Treffer.",
             CN: "暴击率",
+            TW: "暴擊率",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -895,6 +994,7 @@ d = {
             FR: "Nombre de coups considérés comme critiques et coups nets.",
             DE: "Anzahl der Treffer, die direct und kritisch getroffen haben.",
             CN: "直击暴击次数",
+            TW: "直擊暴擊次數",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -908,6 +1008,7 @@ d = {
             FR: "Poucentage de coups considérés comme critiques et coups nets.",
             DE: "Prozentualer Anteil der Treffer, die direct und kritisch getroffen haben.",
             CN: "直击暴击率",
+            TW: "直擊暴擊率",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -921,6 +1022,7 @@ d = {
             FR: "Plus forte attaque unique.",
             DE: "Höchster verursachter Schaden durch einen Angriff.",
             CN: "最大伤害技能",
+            TW: "最大傷害技能",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -934,6 +1036,7 @@ d = {
             FR: "Soins totaux divisés par la durée du combat.",
             DE: "Summe der verursachen Heilung dividiert durch die Kampfzeit.",
             CN: "每秒疗伤<br><span class='ac'> = 治疗总量除以战斗时间</span>",
+            TW: "每秒療傷<br><span class='ac'> = 治療总量除以戰鬥時间</span>",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -947,6 +1050,7 @@ d = {
             FR: "Pourcentage de soins réalisé par rapport au groupe.",
             DE: "Prozentualer Anteil an der gesamten Heilung der Gruppe.",
             CN: "在总治疗量里自己的治疗量占比",
+            TW: "在总治療量里自己的治療量佔比",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -960,6 +1064,7 @@ d = {
             FR: "Quantité de soins.",
             DE: "Summe der verursachten Heilung.",
             CN: "总治疗量",
+            TW: "总治療量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -973,6 +1078,7 @@ d = {
             FR: "Quantité de soins (overheal et bouclier exclus).",
             DE: "Summe der verursachten Heilung, Overheal und Schilde ausgenommen.",
             CN: "有效治疗量",
+            TW: "有效治療量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -986,6 +1092,7 @@ d = {
             FR: "Quantité de dégâts bloqués par les boucliers du soigneur.",
             DE: "Summe des Schadens, welcher durch Schilde der Healer absorbiert wurde.",
             CN: "治疗防护罩抵消的伤害",
+            TW: "治療防護罩抵消的傷害",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -999,6 +1106,7 @@ d = {
             FR: "Quantité de soins au dessus des HP max de la cible.",
             DE: "Summe der Heilung, welche über 100% Gesundheit verursacht wurde.",
             CN: "无效治疗量",
+            TW: "無效治療量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1012,6 +1120,7 @@ d = {
             FR: "Poucentage de soins au dessus des HP max de la cible.",
             DE: "Prozentualer Anteil der Heilung, welche über 100% Gesundheit verursacht wurde.",
             CN: "无效治疗占比",
+            TW: "無效治療佔比",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1025,6 +1134,7 @@ d = {
             FR: "Nombre de soins de ce combatant.",
             DE: "Anzahl der verursachen Heilungen.<br><span class='ac'> = Umfasst auch Heilung von jedem Tick von HoTs wie Regena.</span>",
             CN: "治疗次数<br><span class='ac'> = 包含HOT，技能等</span>",
+            TW: "治療次數<br><span class='ac'> = 包含HOT，技能等</span>",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -1038,6 +1148,7 @@ d = {
             FR: "Nombre de soins critiques.",
             DE: "Anzahl der Heilung, welche kritisch getroffen hat.",
             CN: "治疗暴击次数",
+            TW: "治療暴擊次數",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1051,6 +1162,7 @@ d = {
             FR: "Pourcentage de soins critiques.",
             DE: "Prozentualer Anteil der Heilung, welche kritisch getroffen hat.",
             CN: "治疗暴击率",
+            TW: "治療暴擊率",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1064,6 +1176,7 @@ d = {
             FR: "Plus fort soin unique.",
             DE: "Größte verursachte Heilung.",
             CN: "最大治疗技能",
+            TW: "最大治療技能",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -1077,6 +1190,7 @@ d = {
             FR: "Quantité de dégâts subit par le combatant.",
             DE: "Summe des erhaltenen Schadens.",
             CN: "承伤量",
+            TW: "承傷量",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -1090,6 +1204,7 @@ d = {
             FR: "Quantité de soins reçue par ce combatant.",
             DE: "Summe der erhaltenen Heilung.",
             CN: "受到治疗量",
+            TW: "受到治療量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1103,6 +1218,7 @@ d = {
             FR: "Quantité de vie absorbée aux autres par ce combatant.",
             DE: "Summe der Lebenspunkte, die durch Kampffähigkeiten regeneriert wurden.",
             CN: "根据技能的HP恢复量",
+            TW: "根據技能的HP恢復量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1116,6 +1232,7 @@ d = {
             FR: "Quantité de mana rendue par ce combatant aux autres.",
             DE: "Summe der Mana, die durch Fähigkeiten regneriert wurde.",
             CN: "根据技能的MP恢复量",
+            TW: "根據技能的MP恢復量",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1129,6 +1246,7 @@ d = {
             FR: "Pourcentage de coups parés.",
             DE: "Prozentualer Anteil an parrierten Treffern.",
             CN: "招架率",
+            TW: "招架率",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -1142,6 +1260,7 @@ d = {
             FR: "Pourcentage de coups bloqués.",
             DE: "Prozentualer Anteil an geblockten Treffern.",
             CN: "格挡率",
+            TW: "格擋率",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -1155,6 +1274,7 @@ d = {
             FR: "Nombre de dispell réalisé par le combatant.",
             DE: "Anzahl der Zauber, welche negative Statuseffekte entfernt haben.",
             CN: "驱散debuff次数",
+            TW: "驅散debuff次數",
         },
         e: "li_2line_checkbox",
         ul: 1
@@ -1168,6 +1288,7 @@ d = {
             FR: "Nombre de mort.",
             DE: "Anzahl der Tode.",
             CN: "死亡次数",
+            TW: "死亡次數",
         },
         e: "li_2line_checkbox",
         ul: 0

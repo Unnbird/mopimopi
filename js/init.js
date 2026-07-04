@@ -9,6 +9,7 @@ Mopi2 = {
         dmgType: 1,
         ds: ".",
         ns: 1,
+        unit_ns: 0,
         gs: ",",
         cnt: 1,
         myName: 0,

@@ -379,7 +379,7 @@ function addData(colName, a, p) {
         case 'encdps':
         case 'enchps':
             if (a != 'Infinity') {
-                if (a >= 10000 && init.q.unit == 1) return addComma(a, 1000, init.q.ns * init.q.dpsType)
+                if (a >= 10000 && init.q.unit == 1) return addComma(a, 1000, init.q.unit_ns)
                 else return addComma(a, null, init.q.ns * init.q.dpsType);
             } else
                 return '∞'
@@ -403,8 +403,8 @@ function addData(colName, a, p) {
         case 'mergedAbsorbHeal':
         case 'powerheal':
         case 'deaths':
-            if (a >= 1000000 && init.q.unit == 1) return addComma(a, 1000000, init.q.ns * init.q.dmgType)
-            else if (a >= 10000 && init.q.unit == 1) return addComma(a, 1000, init.q.ns * init.q.dmgType)
+            if (a >= 1000000 && init.q.unit == 1) return addComma(a, 1000000, init.q.unit_ns)
+            else if (a >= 10000 && init.q.unit == 1) return addComma(a, 1000, init.q.unit_ns)
             else return addComma(a);
         case 'maxhit':
         case 'maxheal':
@@ -420,14 +420,14 @@ function addData(colName, a, p) {
                 }
             }
             if (p[unit] == 'K')
-                data = addComma(p[val], 1000, init.q.ns * init.q.dmgType)
+                data = addComma(p[val], 1000, init.q.unit_ns)
             else if (p[unit] == 'M')
-                data = addComma(p[val], 1000000, init.q.ns * init.q.dmgType)
+                data = addComma(p[val], 1000000, init.q.unit_ns)
             else {
                 if (p[val] >= 1000 && init.q.max_unit == 1)
-                    data = addComma(p[val], 1000, init.q.ns * init.q.dmgType)
+                    data = addComma(p[val], 1000, init.q.unit_ns)
                 else if (p[val] >= 1000000 && init.q.max_unit == 1)
-                    data = addComma(p[val], 1000000, init.q.ns * init.q.dmgType)
+                    data = addComma(p[val], 1000000, init.q.unit_ns)
                 else
                     data = addComma(p[val])
             }
