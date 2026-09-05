@@ -8,6 +8,54 @@ var barSize = new Array(),
 
 var onStopFlag = false;
 
+// The pair currently drawn. update() is handed the live encounter most of the time but the
+// settings screen feeds it the canned preview, so a header click has to re-render whichever of
+// the two is actually on screen rather than reaching for lastDPS.
+var curDPS = null,
+    curHPS = null;
+
+// Columns holding a label or an mm:ss string. There is no ordering to give them, so their header
+// stays inert instead of sorting every row by NaN.
+var noSort = { Class: 1, name: 1, duration: 1, EncounterDuration: 1 };
+
+// The field a column sorts and draws its bar from. Anything missing here sorts by its own name;
+// these entries exist because the column shows a rate or a label while the ordering belongs to the
+// running total behind it. Leaving DPS/HPS on the bare "damage"/"healed" matters: Combatant.sort()
+// swaps those two for their merged twins once pets are attached, which is what keeps summoner and
+// scholar pet output inside the owner's bar.
+var sortAlias = {
+    encdps: 'damage',
+    mergedDamage: 'damage',
+    enchps: 'healed',
+    mergedHealed: 'healed',
+    maxhit: 'mergedmaxhitval',
+    maxheal: 'mergedmaxhealval'
+};
+
+function isSortable(col) {
+    return !noSort[col] && init.ColData[col] != undefined
+}
+function sortColumn(flag) {
+    var col = init.q['sort' + flag]
+    if (isSortable(col) && init.Order[flag].indexOf(col) > -1)
+        return col
+    // The stored column can have been dropped from the layout since it was picked; fall back to
+    // the leftmost column that does sort so the table never ranks by a key nobody is showing.
+    for (var i in init.Order[flag]) {
+        if (isSortable(init.Order[flag][i]))
+            return init.Order[flag][i]
+    }
+    return flag == 'HPS' ? 'enchps' : 'encdps'
+}
+function applySort(last, flag) {
+    // sortkey is set directly rather than through resort(), which runs the key past activeSort().
+    // That rewrite turns any "...Pct" into "...%", which is what ACT sends for damagePct and
+    // crithitPct but not for the ones recalculate() derives itself - there is no DirectHit% - and a
+    // sortkey nothing answers to ranks every row by undefined and flattens the bars to nothing.
+    last.sortkey = sortAlias[sortColumn(flag)] || sortColumn(flag)
+    last.sort(init.q['sortDesc' + flag] ? true : false)
+}
+
 function onOverlayDataUpdate(e) {
     if (lastCombat == null) return;
     lastDPS = lastCombat
@@ -49,7 +97,9 @@ function onOverlayDataUpdate(e) {
     }
 }
 
-function update(lastDPS, lastHPS) {    
+function update(lastDPS, lastHPS) {
+    curDPS = lastDPS;
+    curHPS = lastHPS;
     if (lastDPS.zone == 'HAERU') {
         _ = '_P'
     } else
@@ -57,17 +107,17 @@ function update(lastDPS, lastHPS) {
     if (init.q.pets == 0) {
         lastDPS.summonerMerge = false;
         lastDPS.DetachPets();
-        lastDPS.resort("damage", 1);
+        applySort(lastDPS, 'DPS');
         lastHPS.summonerMerge = false;
         lastHPS.DetachPets();
-        lastHPS.resort("healed", 1)
+        applySort(lastHPS, 'HPS')
     } else {
         lastDPS.summonerMerge = true;
         lastDPS.AttachPets();
-        lastDPS.resort("mergedDamage", 1);
+        applySort(lastDPS, 'DPS');
         lastHPS.summonerMerge = true;
         lastHPS.AttachPets();
-        lastHPS.resort("mergedHealed", 1)
+        applySort(lastHPS, 'HPS')
     }
     if (init.q.act == 2) {
         $('nav table[name=ACT_2line]').fadeIn(0)
@@ -230,11 +280,24 @@ function createTableHeader(flag, newHeader) {
     var tableHeader = document.createElement("TABLE");
     tableHeader.className = "tableHeader";
     var tr = tableHeader.insertRow()
+    var active = sortColumn(flag)
     for (var i in init.Order[flag]) {
         var n = init.Order[flag][i]
         var td = tr.insertCell();
         td.innerHTML = init.ColData[n].tt;
         td.className = n + " cell";
+        if (isSortable(n)) {
+            td.className += " sortable";
+            td.setAttribute('data-sort', n);
+            td.setAttribute('data-flag', flag);
+            if (n == active) {
+                td.className += " sorted";
+                // The marker is absolutely positioned (see .sortArrow) because the cell is
+                // width-locked by ColData and clips what overflows: appended inline it would push
+                // a label like "Last180" out of its own column.
+                td.innerHTML += '<span class="sortArrow">' + (init.q['sortDesc' + flag] ? '▼' : '▲') + '</span>';
+            }
+        }
     }
     newHeader.appendChild(tableHeader)
 }
@@ -480,25 +543,27 @@ function addComma(num, dd, ds) {
     }
 }
 function inputGraph(userName, flag, maxDamage, p) {
-    if (flag == 'DPS')
-        var userWidth = parseInt((p.mergedDamage / maxDamage) * 100);
-    else {
-        var userWidth = parseInt((p.mergedHealed / maxDamage) * 100);
-        var overheal = Math.min(100, parseInt((p.mergedOverHeal / p.mergedHealed) * 100))
-        var shield = Math.min(100, parseInt((p.mergedDamageShield / p.mergedHealed) * 100))
+    // The bar length reads whatever the table is ranked by, so it stays a picture of the column the
+    // order came from. maxDamage is the top row's value for that same key - Combatant.sort()
+    // recomputes it over the active sortkey - so the leader is always full width.
+    var userWidth = barPct(p[p.parent.sortkey], maxDamage);
+    if (flag != 'DPS') {
+        var overheal = barPct(p.mergedOverHeal, p.mergedHealed)
+        var shield = barPct(p.mergedDamageShield, p.mergedHealed)
     }
     var width = graphAnimate(userWidth, 'bar', flag, userName, p.Class, p.role)
     $('#' + flag + 'Body' + _).find('#' + userName).find('.mini').css({
         width: width + '%',
     })
     if (init.q.pets == 1) {
+        // The sub-bars live inside .mini, which is already scaled to this row's bar, so they are
+        // shares of the row's own total and not of the encounter maximum. Measured against
+        // maxDamage they read short for everyone below the leader, and once the ranking is a
+        // percentage column - whose maximum is a far smaller number - they overflow the bar.
         if (flag == 'DPS') {
-            var petWidth = Math.min(100, parseInt((p.mergedDamage - p.damage) / maxDamage * 100))
-            graphAnimate(petWidth, 'pet', flag, userName, 'pet')
+            graphAnimate(barPct(p.mergedDamage - p.damage, p.mergedDamage), 'pet', flag, userName, 'pet')
         } else {
-            var fairyEffHeal = parseInt(p.mergedEffHealed - p.effHealed)
-            var petWidth = Math.min(100, parseInt((fairyEffHeal / maxDamage) * 100))
-            graphAnimate(petWidth, 'pet', flag, userName, 'pet')
+            graphAnimate(barPct(p.mergedEffHealed - p.effHealed, p.mergedHealed), 'pet', flag, userName, 'pet')
             graphAnimate(shield, 'ds', flag, userName, 'ds')
             graphAnimate(overheal, 'oh', flag, userName, 'oh')
         }
@@ -508,6 +573,14 @@ function inputGraph(userName, flag, maxDamage, p) {
             graphAnimate(overheal, 'oh', flag, userName, 'oh')
         }
     }
+}
+// Any column can be the ranking now, including ones that go negative (rdpsDelta) or sit at zero
+// for the whole party before the first hit lands, so the share is clamped rather than trusted.
+function barPct(val, max) {
+    val = parseFloat(val);
+    max = parseFloat(max);
+    if (!isFinite(val) || !isFinite(max) || max <= 0) return 0;
+    return Math.max(0, Math.min(100, parseInt(val / max * 100)))
 }
 function graphAnimate(width, bar, flag, userName, job, role) {
     if (init.q.gradient == 1) {

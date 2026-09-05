@@ -30,7 +30,7 @@ $().ready(function () {
     initOverlay()
 });
 function addOption() {
-    var qVal = ['bar_position_DPS', 'mhh_unit', 'dmgType', 'view24_Number', 'time_italic', 'target_italic', 'rps_italic', 'header_italic', 'body_italic', 'iconSet', 'borderTextType', 'max_unit', 'act_md', 'act_mh', 'unit_ns']
+    var qVal = ['bar_position_DPS', 'mhh_unit', 'dmgType', 'view24_Number', 'time_italic', 'target_italic', 'rps_italic', 'header_italic', 'body_italic', 'iconSet', 'borderTextType', 'max_unit', 'act_md', 'act_mh', 'unit_ns', 'sortDPS', 'sortHPS', 'sortDescDPS', 'sortDescHPS']
     var RangeVal = ['tableLineVer', 'sizeLineVer', 'view24TableYOU', 'view24TableOther', 'view24BgYOU', 'view24BgOther', 'size24BodyNameText', 'size24BodyDataText', 'size24BodyIcon', 'size24TableSlice', 'size24TableHeight', 'size24TableIdxWd']
     var colorVal = ['VPR', 'PCT', 'RPR', 'SGE', 'DNC', 'GNB', 'BLU', 'tableLineVer', 'tableBorderYOU', 'tableBorderOther', 'view24TableYOU', 'view24TableOther', 'view24BgYOU', 'view24BgOther']
     putValue(qVal, 'q')
@@ -1538,6 +1538,46 @@ function ui() {
         }
     }
     $('.name.cell').css("width", "100%");
+    $('.tableHeader td.sortable').css('cursor', 'pointer')
+    $('.tableHeader td.sorted').css({
+        position: 'relative',
+        color: oHexColor(init.Color.accent, parseFloat(init.Range.tableHdText / 100))
+    })
+    $('.sortArrow').css({
+        color: oHexColor(init.Color.accent, parseFloat(init.Range.tableHdText / 100)),
+        'font-size': Math.max(8, init.Range.sizeHdText - 3) / 10 + 'rem'
+    })
+    $('.tableHeader td.sortable').unbind().on({
+        mouseover: function () {
+            if (init.q.tooltips) {
+                $('#tooltip').html(init.ColData[$(this).attr('data-sort')].tt + '<font class="ex">　❙ Sort</font>')
+                $('#tooltip').show().css('display', 'block')
+            }
+        },
+        mouseleave: function () {
+            $('#tooltip').hide()
+        },
+        click: function () {
+            var col = $(this).attr('data-sort'),
+                flag = $(this).attr('data-flag')
+            // Clicking the column already in charge flips its direction; any other column takes
+            // over descending, which is the reading wanted first from a damage meter.
+            if (init.q['sort' + flag] == col)
+                init.q['sortDesc' + flag] = init.q['sortDesc' + flag] ? 0 : 1
+            else {
+                init.q['sort' + flag] = col
+                init.q['sortDesc' + flag] = 1
+            }
+            localStorage.setItem('Mopi2_HAERU', JSON.stringify(init))
+            $('#tooltip').hide()
+            // Re-rank now rather than waiting on the next tick from ACT: the encounter may already
+            // be over, in which case no further update is coming.
+            if (curDPS != null) {
+                update(curDPS, curHPS)
+                hiddenTable()
+            }
+        }
+    })
     if (lastCombat != null && String(lastCombat.isActive) == "false") {
         $('.Class, .rIcon').css('cursor', 'pointer')
         $('.Class, .rIcon').on({
