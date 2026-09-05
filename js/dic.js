@@ -775,6 +775,118 @@ d = {
         e: "li_2line_checkbox",
         ul: 0
     },
+    rdps: {
+        tt: "rDPS",
+        m: {
+            KR: "레이드 버프 기여도를 정산한 DPS",
+            JP: "レイドバフの寄与を精算したDPS",
+            EN: "Damage per second with other players' raid buff contributions handed back to them, and your own contributions to others added in.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "DPS avec les contributions des buffs de raid redistribuées à leurs lanceurs.",
+            DE: "DPS mit an ihre Urheber zurückgegebenen Raid-Buff-Beiträgen.",
+            CN: "结算团辅贡献后的每秒伤害<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "結算團輔貢獻後的每秒傷害<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    adps: {
+        tt: "aDPS",
+        m: {
+            KR: "레이드 버프를 포함한 실제 DPS. DPS 열과 대조용",
+            JP: "レイドバフ込みの実ダメージDPS。DPS列との照合用",
+            EN: "Raw damage per second, raid buffs included. Should track the DPS column - a mismatch means the addon and ACT disagree.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "DPS brut, buffs de raid inclus. Doit suivre la colonne DPS.",
+            DE: "Roher DPS inklusive Raid-Buffs. Sollte der DPS-Spalte entsprechen.",
+            CN: "含团辅的实际每秒伤害，用于与 DPS 栏对照<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "含團輔的實際每秒傷害，用於與 DPS 欄對照<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    ndps: {
+        tt: "nDPS",
+        m: {
+            KR: "외부 버프 기여를 모두 제거한 순수 DPS",
+            JP: "外部バフの寄与を全て除いた純粋なDPS",
+            EN: "Own damage only, with every external buff contribution stripped out. Shows how well the rotation was executed.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "Dégâts propres uniquement, sans aucune contribution de buff externe.",
+            DE: "Nur eigener Schaden, ohne jeden externen Buff-Beitrag.",
+            CN: "剔除所有外部增益后的纯自身 DPS<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "剔除所有外部增益後的純自身 DPS<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    cdps: {
+        tt: "cDPS",
+        m: {
+            KR: "준 것과 받은 것을 모두 포함 (단일 대상 버프 제외)",
+            JP: "与えた分と受けた分の両方を含む（単体バフを除く）",
+            EN: "Everything except single-target padding: buffs given and AOE buffs received both count.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "Tout sauf les buffs monocible : donnés et reçus comptent.",
+            DE: "Alles außer Einzelziel-Buffs: gegeben und erhalten zählen beide.",
+            CN: "除单体增益外全部计入：给出的与收到的团辅都算<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "除單體增益外全部計入：給出的與收到的團輔都算<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    gcdUptime: {
+        tt: "GCD%",
+        m: {
+            KR: "전투 시간 중 GCD를 굴린 비율",
+            JP: "戦闘時間のうちGCDを回していた割合",
+            EN: "Share of the encounter spent rolling GCDs. Counts weaponskills and spells only - oGCD abilities and auto-attacks are excluded.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "Part du combat passée à enchaîner les GCD.",
+            DE: "Anteil des Kampfes, in dem GCDs gewirkt wurden.",
+            CN: "战斗时间中滚动 GCD 的比例（只计战技与魔法）<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "戰鬥時間中滾動 GCD 的比例（只計戰技與魔法）<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    gcdCount: {
+        tt: "GCDs",
+        m: {
+            KR: "사용한 GCD 횟수",
+            JP: "使用したGCD回数",
+            EN: "Number of weaponskills and spells cast.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "Nombre de GCD utilisés.",
+            DE: "Anzahl gewirkter GCDs.",
+            CN: "使用的 GCD 次数<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "使用的 GCD 次數<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    gcdClip: {
+        tt: "Lost",
+        m: {
+            KR: "GCD 사이 공백으로 잃은 시간 (초)",
+            JP: "GCD間の空白で失った時間（秒）",
+            EN: "Seconds lost to gaps between GCDs longer than this player's own recast.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "Secondes perdues entre les GCD.",
+            DE: "Durch Lücken zwischen GCDs verlorene Sekunden.",
+            CN: "GCD 之间空窗损失的秒数<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "GCD 之間空窗損失的秒數<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    rdpsDelta: {
+        tt: "±Buff",
+        m: {
+            KR: "rDPS - aDPS. 양수면 받은 것보다 준 것이 많음",
+            JP: "rDPS - aDPS。プラスなら与えた分が多い",
+            EN: "rDPS minus aDPS. Positive means this player gave more raid buff value than they received.<br><span class='ac'> = Requires the RdpsOverlay addon</span>",
+            FR: "rDPS moins aDPS. Positif = ce joueur a donné plus qu'il n'a reçu.",
+            DE: "rDPS minus aDPS. Positiv = mehr gegeben als erhalten.",
+            CN: "rDPS 减 aDPS。为正代表给出的团辅收益多于收到的<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+            TW: "rDPS 減 aDPS。為正代表給出的團輔收益多於收到的<br><span class='ac'> = 需要 RdpsOverlay 插件</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
     mergedLast10DPS: {
         tt: "Last10",
         m: {

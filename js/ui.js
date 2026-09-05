@@ -40,6 +40,13 @@ function addOption() {
         init.ColData = Mopi2.ColData;
         init.Order = Mopi2.Order;
     }
+    // Columns added after the user's settings were last saved (rDPS, GCD uptime, ...) are absent
+    // from their stored ColData. The settings list dereferences init.ColData[key][flag] to read
+    // the checkbox state, so a missing key throws and takes the whole settings page down.
+    for (var i in Mopi2.ColData) {
+        if (init.ColData[i] == undefined)
+            init.ColData[i] = Mopi2.ColData[i]
+    }
     SubOption()
 }
 function putValue(arr, c) {

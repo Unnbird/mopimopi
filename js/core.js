@@ -354,7 +354,12 @@ function Person(e, p) {
     for (var i in e) {
         if (i.indexOf("NAME") > -1) continue;
         if (i == "t" || i == "n") continue;
-        var onlyDec = e[i].replace(/[0-9.,%]+/ig, "");
+        // A leading '-' immediately followed by a digit is a sign, not a placeholder: columns like
+        // rdpsDelta are legitimately negative and would otherwise be kept as a string and break
+        // every numeric formatter downstream. "--" / "---" still fall through to the 0 case below.
+        var onlyDec = /^-[0-9]/.test(e[i])
+            ? e[i].slice(1).replace(/[0-9.,%]+/ig, "")
+            : e[i].replace(/[0-9.,%]+/ig, "");
         if (onlyDec != "") {
             if (onlyDec == "---" || onlyDec == "--")
                 this[i] = 0;
@@ -652,6 +657,21 @@ Person.prototype.recalculate = function () {
     this.ENCHPS = Math.floor(this.enchps);
     this["ENCDPS-k"] = Math.floor(this.encdps / 1000);
     this["ENCHPS-k"] = Math.floor(this.enchps / 1000);
+    // RdpsOverlay hands over running totals rather than rates, so that these divide by the exact
+    // same duration encdps does and therefore fall off at the same pace when the player stops
+    // attacking. A rate computed plugin-side is a snapshot against a denominator that has since
+    // moved on, and the column freezes while the DPS column beside it keeps dropping.
+    if (this.rdpsTotal != undefined) this.rdps = pFloat(this.rdpsTotal / this.parent.DURATION);
+    if (this.adpsTotal != undefined) this.adps = pFloat(this.adpsTotal / this.parent.DURATION);
+    if (this.ndpsTotal != undefined) this.ndps = pFloat(this.ndpsTotal / this.parent.DURATION);
+    if (this.cdpsTotal != undefined) this.cdps = pFloat(this.cdpsTotal / this.parent.DURATION);
+    if (this.rdpsTotal != undefined) this.rdpsDelta = pFloat((this.rdpsTotal - this.mergedDamage) / this.parent.DURATION);
+    // gcdUptime is the deliberate exception to the paragraph above: it arrives already divided and
+    // is shown as it came. The plugin measures it once per GCD, at the press, when the interval it
+    // describes has just closed. Dividing its numerator by a duration that keeps ticking would put
+    // the motion back in - the column would slide down through every recast and jump back on the
+    // next press, which is the behaviour reading it at the press is meant to remove.
+
     this["damagePct"] = pFloat(this.mergedDamage / this.parent.Encounter.damage * 100);
     this["healedPct"] = pFloat(this.mergedHealed / this.parent.Encounter.healed * 100);
     this["overHealPct"] = pFloat(this.mergedOverHeal / this.mergedHealed * 100);
