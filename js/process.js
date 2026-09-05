@@ -9,6 +9,7 @@ var barSize = new Array(),
 var onStopFlag = false;
 
 function onOverlayDataUpdate(e) {
+    if (lastCombat == null) return;
     lastDPS = lastCombat
     lastHPS = new Combatant(e, 'enchps');
 
@@ -368,10 +369,19 @@ function addData(colName, a, p) {
         case 'duration':
         case 'EncounterDuration':
             return a
+        case 'gcdUptime':
+            // One decimal, fixed: the plugin measures this to 0.01 and a whole percent hides the
+            // difference between a clean rotation and one clipping every few GCDs.
+            return addComma(a, null, 1) + '<font class="ex">%</font>';
         case 'ParryPct':
         case 'BlockPct':
             return addComma(a) + '<font class="ex">%</font>';
         case 'dps':
+        case 'rdps':
+        case 'adps':
+        case 'ndps':
+        case 'cdps':
+        case 'rdpsDelta':
         case 'mergedLast10DPS':
         case 'mergedLast30DPS':
         case 'mergedLast60DPS':
@@ -383,6 +393,8 @@ function addData(colName, a, p) {
                 else return addComma(a, null, init.q.ns * init.q.dpsType);
             } else
                 return '∞'
+        case 'gcdCount':
+        case 'gcdClip':
         case 'mergedDamage':
         case 'mergedSwings':
         case 'mergedHits':

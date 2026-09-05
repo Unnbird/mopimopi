@@ -294,6 +294,78 @@ Mopi2 = {
             DPS: 1,
             HPS: 0
         },
+        rdps: {
+            tt: "rDPS",
+            width: 50,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        adps: {
+            tt: "aDPS",
+            width: 50,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        ndps: {
+            tt: "nDPS",
+            width: 50,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        cdps: {
+            tt: "cDPS",
+            width: 50,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        gcdUptime: {
+            tt: "GCD%",
+            width: 45,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        gcdCount: {
+            tt: "GCDs",
+            width: 40,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        gcdClip: {
+            tt: "Lost",
+            width: 45,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
+        rdpsDelta: {
+            tt: "±Buff",
+            width: 50,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
         mergedLast10DPS: {
             tt: "Last10",
             width: 50,
