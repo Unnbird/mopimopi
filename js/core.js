@@ -294,6 +294,14 @@ function domReady() {
         console.log("[ERROR] : FFLogs parser failed to start " + ex)
     }
     try {
+        // GCD uptime (js/gcd/meter.js) runs off the same log lines and needs no settings: it is
+        // always on.
+        if (typeof GcdMeter !== 'undefined' && !GcdMeter.init())
+            console.log("[WARN] : GCD uptime not running: " + GcdMeter.state.reason)
+    } catch (ex) {
+        console.log("[ERROR] : GCD uptime failed to start " + ex)
+    }
+    try {
         document.addEventListener('beforeLogLineRead', beforeLogLineRead)
     } catch (ex) { }
     try {
@@ -325,6 +333,9 @@ function onBroadcastMessage(e) {
         // FFLogs' parser (js/fflogs/meter.js) writes its figures over the message first, when it is
         // loaded, switched on and on the same pull; otherwise the message passes through as it came.
         lastCombatRaw = (typeof FflogsMeter !== 'undefined') ? FflogsMeter.overlay(e.detail.msg, myName) : e.detail.msg;
+        // Then the GCD columns (js/gcd/meter.js), measured in this page from the raw log lines, go
+        // into every row, over whatever an ACT addon may have put there.
+        if (typeof GcdMeter !== 'undefined') lastCombatRaw = GcdMeter.overlay(lastCombatRaw, myName);
         lastCombat = new Combatant({
             detail: lastCombatRaw
         }, sortKey);
@@ -350,8 +361,10 @@ function onBroadcastMessage(e) {
                 break;
             case "Chat":
                 // In OverlayPlugin's ACTWebSocket compatibility mode every network log line
-                // arrives here as the raw line; that is the feed FFLogs' parser lives on.
+                // arrives here as the raw line; that is the feed FFLogs' parser and the GCD
+                // meter both live on.
                 if (typeof FflogsMeter !== 'undefined') FflogsMeter.feed(e.detail.msg);
+                if (typeof GcdMeter !== 'undefined') GcdMeter.feed(e.detail.msg);
                 document.dispatchEvent(new CustomEvent("onChatting", {
                     detail: e.detail.msg
                 }));
@@ -692,8 +705,8 @@ Person.prototype.recalculate = function () {
         this.rdpsDelta = pFloat((fAmount - fTaken + fGiven - this.mergedDamage) / this.parent.DURATION);
     }
     // gcdUptime is the deliberate exception to the paragraph above: it arrives already divided and
-    // is shown as it came. The plugin measures it once per GCD, at the press, when the interval it
-    // describes has just closed. Dividing its numerator by a duration that keeps ticking would put
+    // is shown as it came. js/gcd/meter.js measures it once per GCD, at the press, when the interval
+    // it describes has just closed. Dividing its numerator by a duration that keeps ticking would put
     // the motion back in - the column would slide down through every recast and jump back on the
     // next press, which is the behaviour reading it at the press is meant to remove.
 

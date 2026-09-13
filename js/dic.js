@@ -879,13 +879,13 @@ d = {
     gcdUptime: {
         tt: "GCD%",
         m: {
-            KR: "전투 시간 중 GCD를 굴린 비율",
-            JP: "戦闘時間のうちGCDを回していた割合",
-            EN: "Share of the encounter spent rolling GCDs. Counts weaponskills and spells only - oGCD abilities and auto-attacks are excluded.<br><span class='ac'> = Requires the OverlayPluginAddon ACT plugin</span>",
-            FR: "Part du combat passée à enchaîner les GCD.<br><span class='ac'> = Nécessite le plugin ACT OverlayPluginAddon</span>",
-            DE: "Anteil des Kampfes, in dem GCDs gewirkt wurden.<br><span class='ac'> = Benötigt das ACT-Plugin OverlayPluginAddon</span>",
-            CN: "战斗时间中滚动 GCD 的比例（只计战技与魔法）<br><span class='ac'> = 需要 OverlayPluginAddon 插件</span>",
-            TW: "戰鬥時間中滾動 GCD 的比例（只計戰技與魔法）<br><span class='ac'> = 需要搭配 OverlayPluginAddon 外掛</span>",
+            KR: "첫 GCD부터 마지막 GCD까지 GCD를 굴린 비율 (전투기술·마법만 집계)",
+            JP: "最初のGCDから最新のGCDまでの間、GCDを回していた割合（ウェポンスキルと魔法のみ）",
+            EN: "Share of the time from this player's first GCD to their latest one spent rolling GCDs. Counts weaponskills and spells only - oGCD abilities and auto-attacks are excluded.",
+            FR: "Part du temps, du premier GCD au dernier, passée à enchaîner les GCD (armes et sorts uniquement).",
+            DE: "Anteil der Zeit vom ersten bis zum letzten GCD, in dem GCDs gewirkt wurden (nur Waffenfertigkeiten und Zauber).",
+            CN: "从第一次 GCD 到最新一次 GCD 之间，GCD 在转的比例（只计战技与魔法）",
+            TW: "從第一次 GCD 到最新一次 GCD 之間，GCD 在轉的比例（只計戰技與魔法）",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -895,11 +895,11 @@ d = {
         m: {
             KR: "사용한 GCD 횟수",
             JP: "使用したGCD回数",
-            EN: "Number of weaponskills and spells cast.<br><span class='ac'> = Requires the OverlayPluginAddon ACT plugin</span>",
-            FR: "Nombre de GCD utilisés.<br><span class='ac'> = Nécessite le plugin ACT OverlayPluginAddon</span>",
-            DE: "Anzahl gewirkter GCDs.<br><span class='ac'> = Benötigt das ACT-Plugin OverlayPluginAddon</span>",
-            CN: "使用的 GCD 次数<br><span class='ac'> = 需要 OverlayPluginAddon 插件</span>",
-            TW: "使用的 GCD 次數<br><span class='ac'> = 需要搭配 OverlayPluginAddon 外掛</span>",
+            EN: "Number of weaponskills and spells cast.",
+            FR: "Nombre de GCD utilisés.",
+            DE: "Anzahl gewirkter GCDs.",
+            CN: "使用的 GCD 次数",
+            TW: "使用的 GCD 次數",
         },
         e: "li_2line_checkbox",
         ul: 0
@@ -909,11 +909,25 @@ d = {
         m: {
             KR: "GCD 사이 공백으로 잃은 시간 (초)",
             JP: "GCD間の空白で失った時間（秒）",
-            EN: "Seconds lost to gaps between GCDs longer than this player's own recast.<br><span class='ac'> = Requires the OverlayPluginAddon ACT plugin</span>",
-            FR: "Secondes perdues entre les GCD.<br><span class='ac'> = Nécessite le plugin ACT OverlayPluginAddon</span>",
-            DE: "Durch Lücken zwischen GCDs verlorene Sekunden.<br><span class='ac'> = Benötigt das ACT-Plugin OverlayPluginAddon</span>",
-            CN: "GCD 之间空窗损失的秒数<br><span class='ac'> = 需要 OverlayPluginAddon 插件</span>",
-            TW: "GCD 之間空窗損失的秒數<br><span class='ac'> = 需要搭配 OverlayPluginAddon 外掛</span>",
+            EN: "Seconds lost to gaps between GCDs longer than this player's own recast.",
+            FR: "Secondes perdues entre les GCD.",
+            DE: "Durch Lücken zwischen GCDs verlorene Sekunden.",
+            CN: "GCD 之间空窗损失的秒数",
+            TW: "GCD 之間空窗損失的秒數",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
+    gcdRecast: {
+        tt: "GCD",
+        m: {
+            KR: "추정한 2.5초 기준 GCD (초). 실제 누른 간격에서 스킬/스펠 속도를 역산",
+            JP: "推定した2.5秒基準のGCD（秒）。実際に押した間隔からスキル/スペルスピードを逆算",
+            EN: "This player's 2.5s-base GCD in seconds, from the skill or spell speed inferred from their own presses. 2.5 until enough GCDs have been seen.",
+            FR: "GCD de base 2,5 s de ce joueur (secondes), déduit de la vitesse observée sur ses propres GCD. 2,5 tant qu'il n'y a pas assez de GCD.",
+            DE: "Die 2,5-s-Basis-GCD dieses Spielers in Sekunden, aus dem an seinen eigenen GCDs abgelesenen Tempowert. 2,5, bis genug GCDs gesehen wurden.",
+            CN: "由推估出的技速/咏速算出的 2.5 秒基准 GCD（秒）。样本不足时显示 2.5",
+            TW: "由推估出的技速/詠速算出的 2.5 秒基準 GCD（秒）。樣本不足時顯示 2.5",
         },
         e: "li_2line_checkbox",
         ul: 0

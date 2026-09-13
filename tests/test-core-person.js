@@ -3,7 +3,7 @@
  * where the rDPS family comes from now: the FFLogs parser's four totals that js/fflogs/apply.js
  * writes into a row, and nothing else. The export variables the retired RdpsOverlay addon used
  * to inject (rdpsTotal, rdps, rawdps, ...) must be ignored on the way in, while the GCD columns
- * OverlayPluginAddon injects still pass straight through.
+ * (written by js/gcd/apply.js, or by the OverlayPluginAddon ACT addon) pass straight through.
  *
  * Usage:  node tests/test-core-person.js
  */
@@ -47,7 +47,7 @@ const duration = 512;
 const rate = (total) => Math.round(total / duration * 100) / 100;
 
 // One row as apply.js leaves it (FFLogs totals written in), one as a stale RdpsOverlay would
-// have sent it (legacy export variables only), both with OverlayPluginAddon's GCD columns.
+// have sent it (legacy export variables only), both with the GCD columns already written in.
 const combatData = {
 	Encounter: { title: 'M4S', duration: '08:32', DURATION: String(duration), damage: '19568640', healed: '0', ENCDPS: '38220' },
 	Combatant: {
@@ -99,7 +99,7 @@ check('a legacy-only row has no rdpsDelta', legacy.rdpsDelta, undefined);
 check('legacy rdps rate did not leak in either', legacy.rdpsTotal, undefined);
 check('its plain columns are untouched', legacy.damage, 9784320);
 
-console.log('\n=============== GCD columns from OverlayPluginAddon pass straight through ===============');
+console.log('\n=============== GCD columns pass straight through, undivided ===============');
 check('gcdUptime shown as sent', fflogs.gcdUptime, 92.6);
 check('gcdCount', fflogs.gcdCount, 198);
 check('gcdClip', fflogs.gcdClip, 4.2);

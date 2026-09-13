@@ -363,6 +363,15 @@ Mopi2 = {
             DPS: 0,
             HPS: 0
         },
+        gcdRecast: {
+            tt: "GCD",
+            width: 40,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
         rdpsDelta: {
             tt: "±Buff",
             width: 50,

@@ -437,9 +437,12 @@ function addData(colName, a, p) {
         case 'EncounterDuration':
             return a
         case 'gcdUptime':
-            // One decimal, fixed: the plugin measures this to 0.01 and a whole percent hides the
+            // One decimal, fixed: js/gcd measures this to 0.01 and a whole percent hides the
             // difference between a clean rotation and one clipping every few GCDs.
             return addComma(a, null, 1) + '<font class="ex">%</font>';
+        case 'gcdRecast':
+            // Tooltip GCDs are tiered to 0.01s (2.50, 2.45, 2.37...), so two decimals, fixed.
+            return addComma(a, null, 2);
         case 'ParryPct':
         case 'BlockPct':
             return addComma(a) + '<font class="ex">%</font>';
