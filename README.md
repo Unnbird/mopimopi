@@ -17,7 +17,7 @@
 
 | mopimopi 欄位 | 數字從哪來 | 需要什麼 |
 |---|---|---|
-| DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT。對上時個人 DPS 的分母也是 fight 時長 | 無 |
+| DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT。對上時所有每秒數值的分母是 **fight 時長減 downtime**（見〈兩個時鐘〉） | 無 |
 | **rDPS / aDPS / nDPS / cDPS / ±Buff** | 內建 FFLogs 解析器，且只有它：`apply.js` 把每人的 `amount / amountTaken / singleTargetAmountTaken / amountGiven` 寫進該列，`Person.recalculate()` 用 `amount − amountTaken + amountGiven` 等四式除以時長。解析器沒接上（標題列顯示 `ACT`）時這幾欄是 0 | 無 |
 | 治療、HPS、溢療、治療數、爆擊治療、最大治療 | ACT。這版解析器的 meters 對玩家不記治療（見〈限制〉），只有 HPS 改用 fight 時長去除 | 無 |
 | **GCD%（運轉率）、GCDs（次數）、Lost（空窗秒數）、GCD（推估 recast）** | 頁面內建 `js/gcd/`：`meter.js` 吃 20/21/22/23 行記 GCD、26/30 行記加速狀態，`apply.js` 把 `gcdUptime / gcdCount / gcdClip / gcdOccupied / gcdRecast` 寫進該列。`GCD%` 是每次按出 GCD 時量好的百分比，原樣顯示、不再除 | 無 |
@@ -47,7 +47,23 @@ OverlayPlugin（ACTWebSocket 相容模式）
 1. **兩邊時長差不超過 90 秒**：同一次 pull 兩邊同時開始、同時結束的正常情況。滅團後 ACT 開新場、解析器還在報舊場時會退回 ACT，直到新場首擊。
 2. **ACT 這個 encounter 是在解析器那場 fight 進行中開始的**（開始時間不早於 fight 開始前 90 秒；fight 已結束的話還要在它結束前）。這條處理 ACT 在劇情轉場把一場拆成兩個 encounter 的情況：M8S 前半身死亡後 ACT 判定脫戰、P2 首擊再開一場新的，而 FFLogs 把整場當一場。沒有這條，整個後半場兩邊時長差七分鐘以上、永遠對不上，rDPS 四欄就整個後半場都是 0。
 
-對上時，每一列的 `DURATION` 也改成 fight 時長：列裡的傷害是 FFLogs 整場的量，個人 DPS 的分母不能還是 ACT 那半場。ACT encounter 的開始時間由 CombatData 的 `isActive` / `DURATION` 與最新一行 log 的時間戳推回來（`FflogsMeter.state.act`）。
+對上時，每一列的 `DURATION` 也改成 fight 的時鐘：列裡的傷害是 FFLogs 整場的量，個人 DPS 的分母不能還是 ACT 那半場。ACT encounter 的開始時間由 CombatData 的 `isActive` / `DURATION` 與最新一行 log 的時間戳推回來（`FflogsMeter.state.act`）。
+
+### 兩個時鐘：DPS 扣 downtime，HPS 不扣
+
+FFLogs 的每秒數值用兩個不同的分母，這不是本專案的慣例，是 FFLogs 官方上傳器 Archon 自己那一行：
+
+```js
+((fight.endTime - fight.startTime) - (type === 'friendlyDamage' ? fight.downtime : 0)) / 1000
+```
+
+- **傷害**（DPS / rDPS / aDPS / nDPS / cDPS）除以 **fight 時長減掉 downtime** —— downtime 是王完全打不到的時段（M8S 兩個本體之間那一分鐘、各種轉場動畫）。
+- **治療**（HPS）除以 **完整 fight 時長**，不扣。
+- 標題列的時間仍然是實際經過的時間，跟 FFLogs 網站一樣：只有每秒數值把 downtime 拿掉。
+
+解析器每次 `collectMeters()` 都會重算 `fight.downtime` 就是為了這個。少扣這一段，一場有一分鐘 downtime 的 pull 傷害會低報約 8%，跟 FFLogs 報告對不上。實作在 `js/fflogs/apply.js` 的 `clocksOf()`：算出的兩個時鐘分別寫進每一列與 Encounter 的 `DURATION`（傷害）與 `HEALDURATION`（治療），`js/core.js` 的 `Person.recalculate()` 各自取用；沒有解析器時沒有 `HEALDURATION`，兩者都退回 ACT 原本那一個時長。
+
+`downtime` 需要解析器認得這個副本才算得出來（它靠副本專屬的 zone handler 追 boss 何時打不到）。**頁面在進副本後才開啟的話 `downtime` 會是 0**，DPS 就會退回「除以整場」。
 
 ### 寵物
 
@@ -62,7 +78,7 @@ OverlayPlugin（ACTWebSocket 相容模式）
 
 - 解析器版本釘在 PARSER-VERSION.md 所記的版本；新 patch 加了新狀態要更新 `parser-ff.js`。
 - 這版解析器的 meters 對玩家**不記治療**（`processMeterHealing` 要求來源帶友方旗標，而解析器只對 NPC 與寵物設定它），治療欄位因此保留 ACT 的值。
-- 頁面要在進副本前就開著；中途載入會錯過 03 AddCombatant，職業/等級要等下次換區才知道。
+- 頁面要在進副本前就開著；中途載入會錯過 03 AddCombatant（職業/等級要等下次換區才知道）與 01 換區行（`downtime` 算不出來，DPS 的分母退回整場）。
 - 命中數來自 FFLogs 但揮擊數與 miss 是 ACT 的，命中率是混源。
 - ACT 把多次 pull 合成一個 encounter 時只會對到解析器的最後一場。
 - ACT 在轉場把一場拆成兩個 encounter 時（M8S），傷害與 rDPS 顯示的是整場（P1 + P2）的 FFLogs 數字，但 GCD 欄位跟著 ACT 的 encounter 只算後半場；轉場的空檔因此不會被記成空窗。
@@ -170,7 +186,7 @@ lastCombatRaw.gcd           // 最近一次 CombatData 有沒有寫入、寫了�
 |---|---|
 | `js/fflogs/parser-ff.js` | FFLogs 官方解析器 |
 | `js/fflogs/host-logic.js` | 選最新一場、寵物併入主人、治療/死亡/最大傷害的純函式 |
-| `js/fflogs/apply.js` | 把 FFLogs 數值寫進 CombatData 字串欄位的純函式 |
+| `js/fflogs/apply.js` | 把 FFLogs 數值寫進 CombatData 字串欄位的純函式；含對場規則與兩個時鐘（`clocksOf`） |
 | `js/fflogs/meter.js` | 在頁面裡跑解析器、吃 Chat 行、每 0.5 秒 collect、決定要不要覆蓋 |
 | `js/gcd/tracker.js` | GCD 運轉率模型（xivanalysis）：速度屬性推估、佔用、空窗、一次 GCD 量一次、換場截斷 |
 | `js/gcd/status-tracker.js` | 誰身上掛著什麼狀態、誰是玩家、`YOU` 對應真名 |

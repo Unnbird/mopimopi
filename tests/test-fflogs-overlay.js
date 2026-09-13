@@ -202,6 +202,36 @@ check('healed = FFLogs healing incl. overheal', enc.healed, '3900000');
 check('ENCDPS = damage / fight seconds', enc.ENCDPS, String(Math.round((16803305 + 1500000 + 5538352 + 999999) / 515.2)));
 check('lowercase encdps kept in step', enc.encdps, enc.ENCDPS);
 check('title untouched', enc.title, 'Recollection');
+check('no downtime: HEALDURATION is the same clock', enc.HEALDURATION, '515');
+
+console.log('\n=============== a fight with downtime ===============');
+// FFLogs divides damage by the fight minus the stretches where the boss cannot be hit, and
+// healing by the whole fight - the same split the uploader's own meter makes:
+//   ((endTime - startTime) - (type === 'friendlyDamage' ? downtime : 0)) / 1000
+// M8S' transition is a minute of it; dividing damage by the whole fight read about 8% low.
+const totalDamage = 16803305 + 1500000 + 5538352 + 999999;
+const withDowntime = apply.applyFflogs(combatData, Object.assign({}, snapshotOf(fight), { downtimeSeconds: 60 }), 'My Name', host);
+const dt = withDowntime.Encounter;
+check('DURATION is the fight minus its downtime', dt.DURATION, '455');
+check('HEALDURATION is the whole fight', dt.HEALDURATION, '515');
+check('the title bar clock is still the whole fight', dt.duration, '08:35');
+check('a row carries both clocks', [withDowntime.Combatant['Viper A'].DURATION, withDowntime.Combatant['Viper A'].HEALDURATION].join('/'), '455/515');
+check('a pet row too', [withDowntime.Combatant['Eos (YOU)'].DURATION, withDowntime.Combatant['Eos (YOU)'].HEALDURATION].join('/'), '455/515');
+check('ENCDPS divides by the active time', dt.ENCDPS, String(Math.round(totalDamage / 455.2)));
+check('ENCHPS divides by the whole fight', dt.ENCHPS, String(Math.round(3900000 / 515.2)));
+check('which is 13% above dividing by the whole fight', Math.round((Number(dt.ENCDPS) / Number(enc.ENCDPS) - 1) * 100), 13);
+check('the tag reports the downtime', withDowntime.fflogs.downtimeSeconds, 60);
+check('and the clock damage was divided by', withDowntime.fflogs.activeSeconds, 515.2 - 60);
+
+// Nothing to divide by is worse than a generous divisor: downtime at or past the whole fight,
+// or missing altogether, falls back to the fight itself.
+const clocks = (durationSeconds, downtimeSeconds) => apply.clocksOf({ durationSeconds, downtimeSeconds });
+check('downtime longer than the fight falls back', clocks(515.2, 900).active, 515.2);
+check('downtime equal to the fight falls back', clocks(515.2, 515.2).active, 515.2);
+check('no downtime field at all', clocks(515.2, undefined).active, 515.2);
+check('garbage downtime', clocks(515.2, 'x').active, 515.2);
+check('negative downtime', clocks(515.2, -30).active, 515.2);
+check('a normal one', clocks(515.2, 60).active, 455.2);
 
 console.log('\n=============== without the logging player\'s name ===============');
 const anon = apply.applyFflogs(combatData, snapshotOf(fight), '', host);

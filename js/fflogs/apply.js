@@ -80,6 +80,30 @@
     return a <= e + CLOSED_FIGHT_SLACK_SECONDS * 1000;
   }
 
+  /**
+   * The two clocks FFLogs keeps for one fight, and which figures each of them divides.
+   *
+   * Damage per second is measured over the fight *minus its downtime* - the stretches where the
+   * boss cannot be hit at all, which in M8S is the minute between the two bodies. Healing per
+   * second is measured over the whole fight. That asymmetry is not a convention of ours; it is
+   * the line the FFLogs uploader's own meter runs:
+   *
+   *     ((fight.endTime - fight.startTime) - (type === 'friendlyDamage' ? fight.downtime : 0)) / 1000
+   *
+   * and it is why the parser recomputes fight.downtime on every collectMeters(). Dividing damage
+   * by the whole fight instead reads about 8% low on a pull with a minute of downtime, and the
+   * columns stop agreeing with the FFLogs report they exist to mirror.
+   *
+   * `active` falls back to the whole fight when downtime is absent, nonsense, or the entire
+   * fight - a divisor of zero is worse than a slightly generous one.
+   */
+  function clocksOf(snapshot) {
+    const seconds = Math.max(0, num(snapshot && snapshot.durationSeconds));
+    const downtime = Math.max(0, num(snapshot && snapshot.downtimeSeconds));
+    const active = downtime > 0 && downtime < seconds ? seconds - downtime : seconds;
+    return { seconds, downtime, active };
+  }
+
   /** ACT's duration string: mm:ss, h:mm:ss past an hour. */
   function formatDuration(seconds) {
     const s = Math.max(0, Math.floor(num(seconds)));
@@ -178,12 +202,15 @@
     const hasHealing = snapshot.hasHealing !== undefined ? !!snapshot.hasHealing : healingByName.size > 0;
     const hasDeaths = snapshot.hasDeaths !== undefined ? !!snapshot.hasDeaths : true;
 
-    // The fight's clock, for the encounter and for every matched row. A row's own DURATION is
-    // what mopimopi divides the personal dps column by; with FFLogs' whole-fight damage in the
-    // row it has to be the whole fight's length too, not ACT's idea of how long this combatant
-    // was active - which, when ACT split the pull at a phase transition, is half the fight.
-    const seconds = Math.max(0, num(snapshot.durationSeconds));
-    const durationString = whole(seconds);
+    // The fight's clocks, for the encounter and for every matched row. A row's own DURATION is
+    // what mopimopi divides its damage columns by, HEALDURATION its healing ones (js/core.js
+    // Person.recalculate); with FFLogs' whole-fight figures in the row both have to be the
+    // fight's own clocks, not ACT's idea of how long this combatant was active - which, when ACT
+    // split the pull at a phase transition, is half the fight. See clocksOf for the two.
+    const clocks = clocksOf(snapshot);
+    const seconds = clocks.seconds;
+    const durationString = whole(clocks.active);
+    const healDurationString = whole(seconds);
 
     let matched = 0;
     const unmatched = [];
@@ -214,6 +241,7 @@
         setFflogsTotals(c, null);
         if (hasDeaths) c.deaths = whole(deaths.get(pet.base) || 0);
         c.DURATION = durationString;
+        c.HEALDURATION = healDurationString;
         matched++;
         continue;
       }
@@ -237,6 +265,7 @@
       setFflogsTotals(c, row);
       if (hasDeaths) c.deaths = whole(deaths.get(name) || 0);
       c.DURATION = durationString;
+      c.HEALDURATION = healDurationString;
       matched++;
     }
 
@@ -247,23 +276,29 @@
     let fflogsHealed = 0;
     for (const r of snapshot.healingRows || []) fflogsHealed += num(r.amount) + num(r.over);
 
-    const divisor = seconds > 0 ? seconds : 1;
+    const divisor = clocks.active > 0 ? clocks.active : 1;
+    const healDivisor = seconds > 0 ? seconds : 1;
     const encDamage = fflogsDamage + actDamageUnmatched;
 
     out.Encounter.DURATION = durationString;
+    out.Encounter.HEALDURATION = healDurationString;
+    // The clock on the title bar stays the real elapsed time of the pull, as it does on FFLogs:
+    // only the per-second figures leave downtime out.
     out.Encounter.duration = formatDuration(seconds);
     out.Encounter.damage = whole(encDamage);
     out.Encounter.ENCDPS = whole(encDamage / divisor);
     if ('encdps' in out.Encounter) out.Encounter.encdps = out.Encounter.ENCDPS;
     if ('DPS' in out.Encounter) out.Encounter.DPS = out.Encounter.ENCDPS;
+    // Healing keeps the whole fight as its divisor, downtime included - FFLogs subtracts downtime
+    // from damage only.
     if (hasHealing) {
       const encHealed = fflogsHealed + actHealedUnmatched;
       out.Encounter.healed = whole(encHealed);
-      out.Encounter.ENCHPS = whole(encHealed / divisor);
+      out.Encounter.ENCHPS = whole(encHealed / healDivisor);
       if ('enchps' in out.Encounter) out.Encounter.enchps = out.Encounter.ENCHPS;
     } else {
-      // ACT's healing total over the parser's duration, so HPS keeps the same clock as DPS.
-      out.Encounter.ENCHPS = whole(num(out.Encounter.healed) / divisor);
+      // ACT's healing total over the parser's fight, so HPS at least keeps the fight's clock.
+      out.Encounter.ENCHPS = whole(num(out.Encounter.healed) / healDivisor);
       if ('enchps' in out.Encounter) out.Encounter.enchps = out.Encounter.ENCHPS;
     }
 
@@ -279,9 +314,11 @@
       fightId: num(snapshot.fightId),
       fightState: String(snapshot.fightState || ''),
       durationSeconds: seconds,
+      downtimeSeconds: clocks.downtime,
+      activeSeconds: clocks.active,
     };
     return out;
   }
 
-  return { applyFflogs, fightMatches, encounterWithinFight, formatDuration, splitPetName, FIGHT_TOLERANCE_SECONDS, CLOSED_FIGHT_SLACK_SECONDS };
+  return { applyFflogs, fightMatches, encounterWithinFight, clocksOf, formatDuration, splitPetName, FIGHT_TOLERANCE_SECONDS, CLOSED_FIGHT_SLACK_SECONDS };
 });

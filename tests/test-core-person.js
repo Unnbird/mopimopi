@@ -43,18 +43,22 @@ function check(label, actual, expected) {
 	console.log(`${ok ? 'PASS' : 'FAIL'} ${label.padEnd(58)} actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`);
 }
 
-const duration = 512;
+const duration = 512;        // the fight minus its downtime: what damage is divided by
+const healDuration = 600;    // the whole fight: what healing is divided by
 const rate = (total) => Math.round(total / duration * 100) / 100;
+const healRate = (total) => Math.round(total / healDuration * 100) / 100;
 
 // One row as apply.js leaves it (FFLogs totals written in), one as a stale RdpsOverlay would
 // have sent it (legacy export variables only), both with the GCD columns already written in.
 const combatData = {
-	Encounter: { title: 'M4S', duration: '08:32', DURATION: String(duration), damage: '19568640', healed: '0', ENCDPS: '38220' },
+	// Two clocks, as js/fflogs/apply.js writes them: DURATION is the fight without its downtime
+	// and divides every damage column, HEALDURATION is the whole fight and divides the healing.
+	Encounter: { title: 'M4S', duration: '10:00', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '19568640', healed: '2048000', ENCDPS: '38220' },
 	Combatant: {
 		'Fflogs Player': {
-			name: 'Fflogs Player', Job: 'RPR', DURATION: String(duration), damage: '9784320', hits: '400', swings: '400', misses: '0',
+			name: 'Fflogs Player', Job: 'RPR', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '9784320', hits: '400', swings: '400', misses: '0',
 			crithits: '100', DirectHitCount: '80', CritDirectHitCount: '20', maxhit: 'Communio-89000', MAXHIT: '89000',
-			healed: '0', overHeal: '0', damageShield: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+			healed: '1024000', overHeal: '0', damageShield: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
 			damagetaken: '0', healstaken: '0',
 			fflogsAmount: '9784320', fflogsAmountTaken: '975872', fflogsSingleTargetAmountTaken: '0', fflogsAmountGiven: '625616',
 			// A stale RdpsOverlay still exporting its columns alongside: these must lose.
@@ -62,9 +66,10 @@ const combatData = {
 			gcdUptime: '92.6', gcdCount: '198', gcdClip: '4.2', gcdRecast: '2.5',
 		},
 		'Legacy Only': {
+			// No HEALDURATION: a row the parser never touched keeps ACT's single duration for both.
 			name: 'Legacy Only', Job: 'BLM', DURATION: String(duration), damage: '9784320', hits: '400', swings: '400', misses: '0',
 			crithits: '100', DirectHitCount: '80', CritDirectHitCount: '20', maxhit: 'Fire IV-70000', MAXHIT: '70000',
-			healed: '0', overHeal: '0', damageShield: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+			healed: '512000', overHeal: '0', damageShield: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
 			damagetaken: '0', healstaken: '0',
 			rdpsTotal: '9434064', adpsTotal: '9784320', ndpsTotal: '8808448', cdpsTotal: '10405376', rawdps: '19105',
 			gcdUptime: '88.1', gcdCount: '190', gcdClip: '9.9', gcdRecast: '2.37',
@@ -89,6 +94,24 @@ check('cdps = (amount - single + given) / DURATION', fflogs.cdps, rate(9784320 +
 check('rdpsDelta = rdps - own damage rate', fflogs.rdpsDelta, rate(625616 - 975872));
 check('encdps for comparison', fflogs.encdps, rate(9784320));
 check('the four FFLogs totals parse as numbers', fflogs.fflogsAmountGiven, 625616);
+
+console.log('\n=============== damage and healing divide by different clocks ===============');
+// FFLogs takes downtime off the damage clock only. Dividing healing by the same shortened clock
+// would print an HPS the FFLogs report never shows.
+check('dps divides by DURATION', fflogs.dps, rate(9784320));
+check('hps divides by HEALDURATION', fflogs.hps, healRate(1024000));
+check('enchps too', fflogs.enchps, healRate(1024000));
+check('a row without HEALDURATION falls back to DURATION', legacy.hps, rate(512000));
+// A message no parser ever touched: one duration, both rates on it, exactly as before.
+const actOnly = new sandbox.Combatant({
+	detail: {
+		Encounter: { title: 'ACT only', duration: '08:32', DURATION: String(duration), damage: '1', healed: '512000' },
+		Combatant: { Solo: { name: 'Solo', Job: 'WHM', DURATION: String(duration), damage: '0', healed: '512000', overHeal: '0', damageShield: '0', heals: '1', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0', hits: '1', swings: '1', misses: '0', crithits: '0', DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0', damagetaken: '0', healstaken: '0' } },
+		isActive: 'true',
+	},
+}, 'encdps');
+actOnly.AttachPets();
+check('so does the encounter when the parser is not on', actOnly.Combatant.Solo.enchps, rate(512000));
 
 console.log('\n=============== legacy RdpsOverlay export variables are ignored ===============');
 check('rdpsTotal never copied onto the Person', fflogs.rdpsTotal, undefined);

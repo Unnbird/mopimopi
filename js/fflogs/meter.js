@@ -174,6 +174,9 @@
       hasDeaths: !!(fight.deaths && fight.deaths.actors),
       deaths: h.deathCounts(fight, pets && pets.nameOf),
       durationSeconds: Math.max(0, (Number(fight.endTime) - Number(fight.startTime)) / 1000),
+      // Time inside the fight when nothing could be hit. The parser recomputes it on every
+      // collectMeters(); apply.js divides damage by the fight without it, as FFLogs does.
+      downtimeSeconds: Number.isFinite(Number(fight.downtime)) ? Math.max(0, Number(fight.downtime) / 1000) : 0,
       parserVersion: state.parserVersion,
       logVersion: state.logVersion,
       fightId: Number(fight.id) || 0,

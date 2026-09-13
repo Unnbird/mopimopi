@@ -179,6 +179,9 @@ for (let now = first; now <= last; now += 1000) {
     fflogs: out.fflogs ? (out.fflogs.applied ? 'APPLIED' : out.fflogs.reason) : 'none',
     fight: snap ? `#${snap.fightId} ${snap.durationSeconds.toFixed(0)}s ${snap.fightState}` : '-',
     youDamage: you.damage, rowDuration: you.DURATION, encDamage: out.Encounter.damage, encDuration: out.Encounter.DURATION,
+    // What FFLogs divides damage by, and the downtime it took off: see js/fflogs/apply.js clocksOf.
+    down: out.fflogs && out.fflogs.applied ? Math.round(out.fflogs.downtimeSeconds) : '-',
+    dps: out.fflogs && out.fflogs.applied && you.damage ? Math.round(Number(you.damage) / Math.max(1, Number(you.DURATION))) : '-',
     gcd: `${you.gcdUptime}% n=${you.gcdCount} lost=${you.gcdClip} r=${you.gcdRecast}`,
     gcdEncounters: G.state.encounters,
   });
@@ -186,7 +189,7 @@ for (let now = first; now <= last; now += 1000) {
 
 // ---------------------------------------------------------------- print
 const show = (r) => console.log(
-  `${r.t}  act=${String(r.act).padStart(4)}  ${r.fflogs.padEnd(36)} ${r.fight.padEnd(22)} YOU dmg=${String(r.youDamage).padEnd(10)} rowDUR=${String(r.rowDuration).padEnd(5)} enc=${String(r.encDamage).padEnd(11)}/${String(r.encDuration).padEnd(4)}s gcd=${r.gcd} encs=${r.gcdEncounters}`
+  `${r.t}  act=${String(r.act).padStart(4)}  ${r.fflogs.padEnd(36)} ${r.fight.padEnd(22)} YOU dmg=${String(r.youDamage).padEnd(10)} /${String(r.rowDuration).padEnd(4)}s=${String(r.dps).padEnd(6)} down=${String(r.down).padEnd(4)} enc=${String(r.encDamage).padEnd(11)} gcd=${r.gcd} encs=${r.gcdEncounters}`
 );
 console.log(`\n--- every ${EVERY} s ---`);
 for (let i = 0; i < report.length; i += EVERY) show(report[i]);

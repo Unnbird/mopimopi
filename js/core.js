@@ -680,10 +680,17 @@ Person.prototype.merge = function (person) {
 Person.prototype.recalculate = function () {
     var dur = this.DURATION;
     if (dur == 0) dur = 1;
+    // FFLogs measures damage over the fight minus its downtime - the stretches where the boss
+    // cannot be hit - and healing over the whole fight. js/fflogs/apply.js writes the first clock
+    // into DURATION and the second into HEALDURATION; without the parser there is no
+    // HEALDURATION and both fall back to ACT's one duration, as before.
+    var hdur = this.HEALDURATION || dur;
+    var encdur = this.parent.DURATION;
+    var enchdur = (this.parent.Encounter && this.parent.Encounter.HEALDURATION) || encdur;
     this.dps = pFloat(this.mergedDamage / dur);
-    this.encdps = pFloat(this.mergedDamage / this.parent.DURATION);
-    this.hps = pFloat(this.mergedHealed / dur);
-    this.enchps = pFloat(this.mergedHealed / this.parent.DURATION);
+    this.encdps = pFloat(this.mergedDamage / encdur);
+    this.hps = pFloat(this.mergedHealed / hdur);
+    this.enchps = pFloat(this.mergedHealed / enchdur);
     this["DAMAGE-k"] = Math.floor(this.mergedDamage / 1000);
     this["DAMAGE-m"] = Math.floor(this.mergedDamage / 1000000);
     this.DPS = Math.floor(this.dps);
