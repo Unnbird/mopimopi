@@ -5,7 +5,7 @@
 1. **內建 FFLogs 官方解析器**：`js/fflogs/parser-ff.js` 是 FFLogs Archon 上傳器內嵌的 `LogParser`（版本見 [js/fflogs/PARSER-VERSION.md](js/fflogs/PARSER-VERSION.md)）。mopimopi 自己餵它 log、自己讀它的即時 meters，**FFLogs 有提供的數值一律優先顯示**（傷害、DPS、爆擊/直擊%、最大傷害、死亡、時長，以及 rDPS / aDPS / nDPS / cDPS），ACT 的只補它沒有的。**不需要任何額外的 ACT 外掛。**
 2. **GCD 運轉率欄位**（`GCD%`、`GCDs`、`Lost`、`GCD`）：這些數字不是 log 裡現成的，要由 ACT 外掛 **[OverlayPluginAddon](https://github.com/Unnbird/OverlayPluginAddon)** 算好、注入 CombatData，mopimopi 只負責顯示。**沒裝 OverlayPluginAddon，這幾欄會是 0。**
 
-> **RdpsOverlay 已廢棄。** 它原本負責的 rDPS 拆帳改由本頁內建的 FFLogs 解析器取代（數字與 FFLogs 網站同源，不再是逼近值），GCD 運轉率則獨立成 OverlayPluginAddon。舊版 RdpsOverlay 送來的 `rdpsTotal` 等欄位仍會被當作後備讀取，但不需要再安裝它。
+> **RdpsOverlay 已廢棄。** 它原本負責的 rDPS 拆帳改由本頁內建的 FFLogs 解析器取代（數字與 FFLogs 網站同源，不再是逼近值），GCD 運轉率則獨立成 OverlayPluginAddon。舊版 RdpsOverlay 送來的 `rdpsTotal`、`rdps`、`rawdps` 等欄位會被**忽略**（`js/core.js` 的 `legacyRdpsKeys`），不必再安裝它，裝著也不會影響顯示。
 
 ## 安裝
 
@@ -18,7 +18,7 @@
 | mopimopi 欄位 | 數字從哪來 | 需要什麼 |
 |---|---|---|
 | DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT | 無 |
-| **rDPS / aDPS / nDPS / cDPS / ±Buff** | 內建 FFLogs 解析器：`amount − amountTaken + amountGiven` 等四式；解析器沒接上時退回外掛送來的 `rdpsTotal`（舊 RdpsOverlay），再沒有就是 0 | 無 |
+| **rDPS / aDPS / nDPS / cDPS / ±Buff** | 內建 FFLogs 解析器，且只有它：`apply.js` 把每人的 `amount / amountTaken / singleTargetAmountTaken / amountGiven` 寫進該列，`Person.recalculate()` 用 `amount − amountTaken + amountGiven` 等四式除以時長。解析器沒接上（標題列顯示 `ACT`）時這幾欄是 0 | 無 |
 | 治療、HPS、溢療、治療數、爆擊治療、最大治療 | ACT。這版解析器的 meters 對玩家不記治療（見〈限制〉），只有 HPS 改用 fight 時長去除 | 無 |
 | **GCD%（運轉率）、GCDs（次數）、Lost（空窗秒數）、GCD（推估 recast）** | OverlayPluginAddon 注入的 `gcdUptime` / `gcdCount` / `gcdClip` / `gcdRecast`。`GCD%` 是外掛在每次按出 GCD 時量好的百分比，mopimopi 原樣顯示、不再除 | **OverlayPluginAddon** |
 | 揮擊數、miss、命中率、承受傷害/治療、盾、Last 10/30/60/180 DPS | ACT | 無 |
@@ -71,6 +71,7 @@ OverlayPlugin（ACTWebSocket 相容模式）
 
 ```
 node tests/test-fflogs-overlay.js
+node tests/test-core-person.js
 ```
 
-假 CombatData + 假 fight 過一遍覆蓋邏輯：每個欄位、`YOU` 對應本機玩家真名、寵物三種情形、Limit Break、不對場保留原樣、沒有治療表時保留 ACT 治療、時長格式。
+前者：假 CombatData + 假 fight 過一遍覆蓋邏輯（每個欄位、`YOU` 對應本機玩家真名、寵物三種情形、Limit Break、不對場保留原樣、沒有治療表時保留 ACT 治療、時長格式）。後者：把 `js/core.js` 放進 Node vm 跑真正的 `Person`，確認 rDPS 四欄只從 FFLogs 的四個總量算出、舊 RdpsOverlay 的匝出欄位被忽略、OverlayPluginAddon 的 GCD 欄位原樣通過。

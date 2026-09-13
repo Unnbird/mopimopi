@@ -93,16 +93,16 @@
     c.MAXHEAL = max.value;
   }
 
-  /** The rDPS family as the running totals RdpsOverlay would send; mopimopi divides them itself. */
-  function setRdpsTotals(c, row) {
-    const amount = row ? num(row.amount) : 0;
-    const taken = row ? num(row.amountTaken) : 0;
-    const single = row ? num(row.singleTargetAmountTaken) : 0;
-    const given = row ? num(row.amountGiven) : 0;
-    c.rdpsTotal = whole(amount - taken + given);
-    c.adpsTotal = whole(amount - single);
-    c.ndpsTotal = whole(amount - taken);
-    c.cdpsTotal = whole(amount - single + given);
+  /**
+   * FFLogs' four per-actor totals, undivided. Person.recalculate() turns them into rDPS / aDPS /
+   * nDPS / cDPS against the same duration as encdps. A pet row gets zeros: its owner's row already
+   * carries the folded total, and mopimopi's merge() must not add anything on top.
+   */
+  function setFflogsTotals(c, row) {
+    c.fflogsAmount = whole(row ? row.amount : 0);
+    c.fflogsAmountTaken = whole(row ? row.amountTaken : 0);
+    c.fflogsSingleTargetAmountTaken = whole(row ? row.singleTargetAmountTaken : 0);
+    c.fflogsAmountGiven = whole(row ? row.amountGiven : 0);
   }
 
   function findPet(row, baseName) {
@@ -163,7 +163,7 @@
         }
         setDamage(c, findPet(ownerDamage, pet.base) || ZERO, host);
         if (hasHealing) setHealing(c, findPet(ownerHealing, pet.base) || ZERO, host);
-        setRdpsTotals(c, null);
+        setFflogsTotals(c, null);
         if (hasDeaths) c.deaths = whole(deaths.get(pet.base) || 0);
         matched++;
         continue;
@@ -185,7 +185,7 @@
       // rows back in merge(), so own + pets lands exactly on the parser's total.
       setDamage(c, row ? row.own : ZERO, host);
       if (hasHealing) setHealing(c, healing ? healing.own : ZERO, host);
-      setRdpsTotals(c, row);
+      setFflogsTotals(c, row);
       if (hasDeaths) c.deaths = whole(deaths.get(name) || 0);
       matched++;
     }
