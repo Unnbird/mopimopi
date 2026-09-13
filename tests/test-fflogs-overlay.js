@@ -195,6 +195,7 @@ check('and is reported as unmatched', stranger.fflogs.unmatched.join(','), 'Some
 console.log('\n=============== encounter totals ===============');
 const enc = out.Encounter;
 check('DURATION from the fight', enc.DURATION, '515');
+check('matched rows take the fight duration too', [c['Viper A'].DURATION, c['YOU'].DURATION, c['Eos (YOU)'].DURATION, c['Limit Break'].DURATION].join('/'), '515/515/515/515');
 check('duration formatted mm:ss', enc.duration, '08:35');
 check('damage = every FFLogs row, Limit Break included', enc.damage, String(16803305 + 1500000 + 5538352 + 999999));
 check('healed = FFLogs healing incl. overheal', enc.healed, '3900000');
@@ -236,6 +237,18 @@ check('fightMatches: new pull vs old fight', apply.fightMatches('30', 515.2), fa
 check('fightMatches: 85s apart still one pull', apply.fightMatches(600, 515), true);
 check('fightMatches: 91s apart is not', apply.fightMatches(606, 515), false);
 check('fightMatches: garbage', apply.fightMatches(undefined, 515), false);
+
+// ACT split M8S at the phase transition: the parser's one fight ran 0..839s (the first body died
+// at 403s, the second appeared at 451s, and its death ended the fight); ACT's second encounter
+// began at 451s. Log time, so the fight starts at S.
+const S = 1789278218402;
+check('within: encounter opened mid-fight while it runs', apply.encounterWithinFight(S + 451000, S, S + 403000, true), true);
+check('within: still that fight once it ended as a kill', apply.encounterWithinFight(S + 451000, S, S + 839000, false), true);
+check('within: pre-pull start inside the tolerance', apply.encounterWithinFight(S - 30000, S, S + 100000, true), true);
+check('within: ACT began long before the fight', apply.encounterWithinFight(S - 120000, S, S + 100000, true), false);
+check('within: a new pull after a wipe is not the old fight', apply.encounterWithinFight(S + 430000, S, S + 400000, false), false);
+check('within: a hair after a closed fight still is', apply.encounterWithinFight(S + 403000, S, S + 400000, false), true);
+check('within: no anchor', apply.encounterWithinFight(NaN, S, S + 400000, true), false);
 check('formatDuration 515', apply.formatDuration(515), '08:35');
 check('formatDuration 3725', apply.formatDuration(3725), '1:02:05');
 check('formatDuration 0', apply.formatDuration(0), '00:00');

@@ -39,6 +39,47 @@
     return Math.abs(a - f) <= tol;
   }
 
+  /**
+   * A fight that has ended may still claim an ACT encounter that began this much after its last
+   * event: DURATION is floored to whole seconds and the page's clock is the latest log line, so an
+   * encounter that really began a hair before the end can read as a hair after it. A new pull
+   * after a wipe starts far later than this.
+   */
+  const CLOSED_FIGHT_SLACK_SECONDS = 5;
+
+  /**
+   * Whether ACT's encounter began while the parser's fight was running - the case the duration
+   * rule cannot see.
+   *
+   * ACT ends its encounter and opens a new one whenever combat drops for its idle timeout, and a
+   * scripted phase transition is exactly that: in M8S the first body dies, a minute passes, the
+   * second body appears, and ACT's second encounter starts there while FFLogs keeps the pull as
+   * one fight. From then on ACT's duration counts from the transition and the parser's from the
+   * pull, seven minutes apart, and every CombatData of the second half fell back to ACT - which
+   * has no rDPS, so those columns read zero for the whole second half.
+   *
+   * An encounter that began inside the fight's span (with the usual tolerance for pre-pull hits)
+   * belongs to that fight. While the fight is in progress "inside" is open-ended: the encounter
+   * may begin in a lull the parser has booked nothing for yet. Once the fight has ended it is
+   * not: a new pull after a wipe begins after the old fight's last event and must not inherit
+   * its figures for the moment it takes the parser to open the next fight.
+   *
+   * @param actStartMs      when ACT's encounter began, in log time
+   * @param fightStartMs    the parser's fight.startTime
+   * @param fightEndMs      the parser's fight.endTime (its last event while in progress)
+   * @param fightInProgress whether the parser still has the fight open
+   */
+  function encounterWithinFight(actStartMs, fightStartMs, fightEndMs, fightInProgress, toleranceSeconds) {
+    const a = Number(actStartMs);
+    const s = Number(fightStartMs);
+    const e = Number(fightEndMs);
+    if (!Number.isFinite(a) || !Number.isFinite(s) || !Number.isFinite(e)) return false;
+    const tol = (toleranceSeconds === undefined ? FIGHT_TOLERANCE_SECONDS : num(toleranceSeconds)) * 1000;
+    if (a < s - tol) return false;
+    if (fightInProgress) return true;
+    return a <= e + CLOSED_FIGHT_SLACK_SECONDS * 1000;
+  }
+
   /** ACT's duration string: mm:ss, h:mm:ss past an hour. */
   function formatDuration(seconds) {
     const s = Math.max(0, Math.floor(num(seconds)));
@@ -137,6 +178,13 @@
     const hasHealing = snapshot.hasHealing !== undefined ? !!snapshot.hasHealing : healingByName.size > 0;
     const hasDeaths = snapshot.hasDeaths !== undefined ? !!snapshot.hasDeaths : true;
 
+    // The fight's clock, for the encounter and for every matched row. A row's own DURATION is
+    // what mopimopi divides the personal dps column by; with FFLogs' whole-fight damage in the
+    // row it has to be the whole fight's length too, not ACT's idea of how long this combatant
+    // was active - which, when ACT split the pull at a phase transition, is half the fight.
+    const seconds = Math.max(0, num(snapshot.durationSeconds));
+    const durationString = whole(seconds);
+
     let matched = 0;
     const unmatched = [];
     let actDamageUnmatched = 0;
@@ -165,6 +213,7 @@
         if (hasHealing) setHealing(c, findPet(ownerHealing, pet.base) || ZERO, host);
         setFflogsTotals(c, null);
         if (hasDeaths) c.deaths = whole(deaths.get(pet.base) || 0);
+        c.DURATION = durationString;
         matched++;
         continue;
       }
@@ -187,6 +236,7 @@
       if (hasHealing) setHealing(c, healing ? healing.own : ZERO, host);
       setFflogsTotals(c, row);
       if (hasDeaths) c.deaths = whole(deaths.get(name) || 0);
+      c.DURATION = durationString;
       matched++;
     }
 
@@ -197,11 +247,10 @@
     let fflogsHealed = 0;
     for (const r of snapshot.healingRows || []) fflogsHealed += num(r.amount) + num(r.over);
 
-    const seconds = Math.max(0, num(snapshot.durationSeconds));
     const divisor = seconds > 0 ? seconds : 1;
     const encDamage = fflogsDamage + actDamageUnmatched;
 
-    out.Encounter.DURATION = whole(seconds);
+    out.Encounter.DURATION = durationString;
     out.Encounter.duration = formatDuration(seconds);
     out.Encounter.damage = whole(encDamage);
     out.Encounter.ENCDPS = whole(encDamage / divisor);
@@ -234,5 +283,5 @@
     return out;
   }
 
-  return { applyFflogs, fightMatches, formatDuration, splitPetName, FIGHT_TOLERANCE_SECONDS };
+  return { applyFflogs, fightMatches, encounterWithinFight, formatDuration, splitPetName, FIGHT_TOLERANCE_SECONDS, CLOSED_FIGHT_SLACK_SECONDS };
 });

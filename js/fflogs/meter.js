@@ -36,6 +36,10 @@
     position: 0,
     lastFight: null,
     lastCollectAt: 0,
+    /** Timestamp of the latest log line parsed - the page's clock in log time. */
+    lastLineMs: NaN,
+    /** ACT's encounter as the CombatData stream describes it, in log time; see noteEncounter. */
+    act: { active: null, startMs: NaN, endMs: NaN, duration: NaN },
     lines: 0,
     errors: 0,
     collectErrors: 0,
@@ -126,6 +130,15 @@
         state.lastError = message(e);
       }
     }
+
+    // The newest timestamp in the batch is "now" for everything that reasons in log time.
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const bar = lines[i].indexOf('|');
+      if (bar < 0) continue;
+      const next = lines[i].indexOf('|', bar + 1);
+      const t = Date.parse(lines[i].substring(bar + 1, next < 0 ? undefined : next));
+      if (Number.isFinite(t)) { state.lastLineMs = t; break; }
+    }
   }
 
   function collect() {
@@ -165,18 +178,47 @@
       logVersion: state.logVersion,
       fightId: Number(fight.id) || 0,
       fightState: String(fight.state || ''),
+      fightStartMs: Number(fight.startTime),
+      fightEndMs: Number(fight.endTime),
+      fightInProgress: String(fight.state || '') === 'inprogress',
     };
   }
 
   /**
+   * Follows ACT's encounter through the CombatData stream, in log time: while it runs, it began
+   * DURATION ago; once it has ended, the moment it ended is kept and its start frozen from that.
+   * isAuthoritative asks whether that start fell inside the parser's fight. A page opened after an
+   * encounter already ended has nothing to anchor on and keeps NaN; the duration rule still works.
+   */
+  function noteEncounter(detail) {
+    const act = state.act;
+    const active = String(detail && detail.isActive) === 'true';
+    const duration = detail && detail.Encounter ? Number(String(detail.Encounter.DURATION).replace(/,/g, '')) : NaN;
+    const now = state.lastLineMs;
+    const anchored = Number.isFinite(now) && Number.isFinite(duration);
+
+    if (active) {
+      if (anchored) { act.startMs = now - duration * 1000; act.endMs = now; }
+    } else if (act.active === true && anchored) {
+      act.endMs = now;
+      act.startMs = now - duration * 1000;
+    }
+    act.active = active;
+    act.duration = duration;
+  }
+
+  /**
    * Whether the parser's fight is the encounter this CombatData message describes: someone has
-   * been booked, the parser answered recently, and the two clocks agree on the pull.
+   * been booked, the parser answered recently, and either the two clocks agree on the pull or
+   * ACT's encounter began while the fight was running - ACT having split the pull at a phase
+   * transition (M8S), where FFLogs keeps one fight. See apply.js encounterWithinFight.
    */
   function isAuthoritative(detail, snap) {
     if (!snap || !snap.damageRows || snap.damageRows.length === 0) return false;
     if (Date.now() - state.lastCollectAt > FRESH_MS) return false;
     const actDuration = detail && detail.Encounter ? detail.Encounter.DURATION : undefined;
-    return apply().fightMatches(actDuration, snap.durationSeconds);
+    if (apply().fightMatches(actDuration, snap.durationSeconds)) return true;
+    return apply().encounterWithinFight(state.act.startMs, snap.fightStartMs, snap.fightEndMs, snap.fightInProgress);
   }
 
   function tag(detail, applied, reason) {
@@ -203,6 +245,7 @@
     if (!enabled()) return tag(detail, false, 'disabled');
     if (!state.available) return tag(detail, false, state.reason);
 
+    noteEncounter(detail);
     collect();
     const snap = snapshot();
     if (!isAuthoritative(detail, snap)) return tag(detail, false, snap ? 'fight does not match the encounter' : 'no fight yet');
@@ -222,6 +265,7 @@
     collect,
     snapshot,
     isAuthoritative,
+    noteEncounter,
     overlay,
     get state() { return state; },
   };

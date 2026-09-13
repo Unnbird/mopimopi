@@ -330,12 +330,15 @@ function onRecvMessage(e) {
 }
 function onBroadcastMessage(e) {
     if (e.detail.msgtype == "CombatData") {
-        // FFLogs' parser (js/fflogs/meter.js) writes its figures over the message first, when it is
-        // loaded, switched on and on the same pull; otherwise the message passes through as it came.
-        lastCombatRaw = (typeof FflogsMeter !== 'undefined') ? FflogsMeter.overlay(e.detail.msg, myName) : e.detail.msg;
-        // Then the GCD columns (js/gcd/meter.js), measured in this page from the raw log lines, go
-        // into every row, over whatever an ACT addon may have put there.
-        if (typeof GcdMeter !== 'undefined') lastCombatRaw = GcdMeter.overlay(lastCombatRaw, myName);
+        // The GCD columns (js/gcd/meter.js) go in first, over whatever an ACT addon may have put
+        // there. They must see ACT's own isActive / DURATION: that is how the GCD meter tells a new
+        // encounter apart, and ACT splitting a pull at a phase transition (M8S) is exactly the reset
+        // that keeps the transition from being booked as lost GCD time.
+        lastCombatRaw = (typeof GcdMeter !== 'undefined') ? GcdMeter.overlay(e.detail.msg, myName) : e.detail.msg;
+        // Then FFLogs' parser (js/fflogs/meter.js) writes its figures over the message, when it is
+        // loaded, switched on and on the same pull - rewriting DURATION to its own fight's length,
+        // which is why it runs second; otherwise the message passes through as it came.
+        if (typeof FflogsMeter !== 'undefined') lastCombatRaw = FflogsMeter.overlay(lastCombatRaw, myName);
         lastCombat = new Combatant({
             detail: lastCombatRaw
         }, sortKey);

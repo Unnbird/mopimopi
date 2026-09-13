@@ -17,7 +17,7 @@
 
 | mopimopi 欄位 | 數字從哪來 | 需要什麼 |
 |---|---|---|
-| DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT | 無 |
+| DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT。對上時個人 DPS 的分母也是 fight 時長 | 無 |
 | **rDPS / aDPS / nDPS / cDPS / ±Buff** | 內建 FFLogs 解析器，且只有它：`apply.js` 把每人的 `amount / amountTaken / singleTargetAmountTaken / amountGiven` 寫進該列，`Person.recalculate()` 用 `amount − amountTaken + amountGiven` 等四式除以時長。解析器沒接上（標題列顯示 `ACT`）時這幾欄是 0 | 無 |
 | 治療、HPS、溢療、治療數、爆擊治療、最大治療 | ACT。這版解析器的 meters 對玩家不記治療（見〈限制〉），只有 HPS 改用 fight 時長去除 | 無 |
 | **GCD%（運轉率）、GCDs（次數）、Lost（空窗秒數）、GCD（推估 recast）** | 頁面內建 `js/gcd/`：`meter.js` 吃 20/21/22/23 行記 GCD、26/30 行記加速狀態，`apply.js` 把 `gcdUptime / gcdCount / gcdClip / gcdOccupied / gcdRecast` 寫進該列。`GCD%` 是每次按出 GCD 時量好的百分比，原樣顯示、不再除 | 無 |
@@ -31,16 +31,23 @@
 OverlayPlugin（ACTWebSocket 相容模式）
   ├─ Chat(每一行原始 log) ──┬─→ js/fflogs/meter.js → LogParser.parseLine（每 100 ms 一批）
   │                         └─→ js/gcd/meter.js    → 20/21/22/23 行記 GCD、26/30 行記加速狀態、02/03 行認玩家
-  └─ CombatData ──→ FflogsMeter.overlay()：對得上這場 encounter 才把 FFLogs 的值寫進 CombatData 字串欄位
-                 ──→ GcdMeter.overlay()：讀 isActive / DURATION 判斷是否換場，把五個 GCD 欄位寫進每一列
+  └─ CombatData ──→ GcdMeter.overlay()：先讀 ACT 原始的 isActive / DURATION 判斷是否換場，把五個 GCD 欄位寫進每一列
+                 ──→ FflogsMeter.overlay()：對得上這場 encounter 才把 FFLogs 的值寫進 CombatData 字串欄位（含改寫 DURATION）
                  → Combatant / Person 照常解析、排序、歷史
 ```
+
+順序是刻意的：FFLogs 對上時會把 `DURATION` 改成整場 fight 的長度，GCD 的換場判斷若看到那個值，ACT 在轉場拆出的新 encounter 就認不出來，轉場的空檔會被記成空窗。
 
 頁面不會呼叫 `callOverlayHandler`：那會讓 OverlayPlugin 切到現代 API 並取消 mopimopi 賴以維生的 CombatData 訂閱。兩個解析器都只在懸浮窗頁面裡跑，不連網。
 
 ## FFLogs 模式怎麼運作
 
-「對得上」= 解析器那場 fight 有人出手、最近 10 秒內有回報、且 ACT encounter 時長與 fight 時長相差不超過 90 秒（滅團後 ACT 開新場、解析器還在報舊場時會退回 ACT，直到新場首擊）。
+「對得上」= 解析器那場 fight 有人出手、最近 10 秒內有回報，且符合下面任一條：
+
+1. **兩邊時長差不超過 90 秒**：同一次 pull 兩邊同時開始、同時結束的正常情況。滅團後 ACT 開新場、解析器還在報舊場時會退回 ACT，直到新場首擊。
+2. **ACT 這個 encounter 是在解析器那場 fight 進行中開始的**（開始時間不早於 fight 開始前 90 秒；fight 已結束的話還要在它結束前）。這條處理 ACT 在劇情轉場把一場拆成兩個 encounter 的情況：M8S 前半身死亡後 ACT 判定脫戰、P2 首擊再開一場新的，而 FFLogs 把整場當一場。沒有這條，整個後半場兩邊時長差七分鐘以上、永遠對不上，rDPS 四欄就整個後半場都是 0。
+
+對上時，每一列的 `DURATION` 也改成 fight 時長：列裡的傷害是 FFLogs 整場的量，個人 DPS 的分母不能還是 ACT 那半場。ACT encounter 的開始時間由 CombatData 的 `isActive` / `DURATION` 與最新一行 log 的時間戳推回來（`FflogsMeter.state.act`）。
 
 ### 寵物
 
@@ -58,6 +65,7 @@ OverlayPlugin（ACTWebSocket 相容模式）
 - 頁面要在進副本前就開著；中途載入會錯過 03 AddCombatant，職業/等級要等下次換區才知道。
 - 命中數來自 FFLogs 但揮擊數與 miss 是 ACT 的，命中率是混源。
 - ACT 把多次 pull 合成一個 encounter 時只會對到解析器的最後一場。
+- ACT 在轉場把一場拆成兩個 encounter 時（M8S），傷害與 rDPS 顯示的是整場（P1 + P2）的 FFLogs 數字，但 GCD 欄位跟著 ACT 的 encounter 只算後半場；轉場的空檔因此不會被記成空窗。
 - 這是 FFLogs 的私有混淆程式碼，放在這個 repo（與 GitHub Pages）散布的 ToS／著作權風險由維護者自負。
 
 ## GCD 運轉率
@@ -130,6 +138,14 @@ node tools/Build-ActionData.js [xivanalysis 路徑]      # 重新產生 js/gcd/a
 - **MNK / NIN 的職業基礎加成沒有單獨套用**（資料檔裡有，但沒接上）。
 - **第一次按鍵之前、最後一次按鍵之後都不算**（見上）。
 
+### 離線重現一場
+
+```
+node tools/Replay-Overlay.js "%APPDATA%\Advanced Combat Tracker\FFXIVLogs\Network_xxx.log" 2026-09-13T13:39 2026-09-13T13:58:30 --around 13:50:45
+```
+
+把那天的網路 log 切出時間範圍，餵進頁面真正的兩個 meter，並依 log 裡的 260（InCombat）行模擬 ACT 開場／收場的 CombatData；每列傷害放的是 `ACT<命中數>` 這種哨兵字串，所以一眼就看得出 FFLogs 有沒有把它換掉、換成多少。M8S 後半場的問題就是這樣抓到的。
+
 ### 除錯
 
 在懸浮窗的開發者工具 console 裡：
@@ -164,6 +180,7 @@ lastCombatRaw.gcd           // 最近一次 CombatData 有沒有寫入、寫了�
 | `js/gcd/meter.js` | 吃 Chat 行、配對詠唱條、判斷換場、呼叫 apply；`window.GcdMeter` |
 | `tools/Build-ActionCategories.ps1` | 從 FFXIV_ACT_Plugin.dll 產生分類表快照 |
 | `tools/Build-ActionData.js` | 從 xivanalysis 產生 recast 資料 |
+| `tools/Replay-Overlay.js` | 把 ACT 網路 log 餵進頁面真正的 intake（兩個 meter 照 index.html 的順序載入），並依 log 裡的 260 行模擬 ACT 的 CombatData，逐秒印出 FFLogs 有沒有套用、套了什麼、GCD 欄位長什麼樣。離線重現「某一場數字不對」用 |
 | `js/core.js` | `onBroadcastMessage` 的接點（`Chat` → 兩個 feed、`CombatData` → 兩個 overlay） |
 
 ## 測試
