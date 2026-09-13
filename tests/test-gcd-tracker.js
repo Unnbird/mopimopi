@@ -423,6 +423,55 @@ g.dropBefore(at(30.0));
 check('after: only the new encounter counts', g.statsFor('Straddle').clip, 0, 0.01);
 check('after: count', g.statsFor('Straddle').count, 10, 0);
 
+section('20. downtime: a boss nobody can hit is not clipping');
+// M8S goes untargetable for 47 s at the phase transition. Charged as a gap, that alone took six
+// points off everyone's uptime; the FFLogs parser knows the windows and hands them over here.
+const window47 = [{ start: at(48), end: at(95) }];
+g = tracker();
+now = 0;
+for (let i = 0; i < 20; i++) { g.record('Down', PLAIN, at(now), 1.0, false, false); now += 2.5; }   // last press 47.5
+now = 95.5;
+for (let i = 0; i < 20; i++) { g.record('Down', PLAIN, at(now), 1.0, false, false); now += 2.5; }   // last press 143.0
+st = g.statsFor('Down');
+check('without the window the whole transition is lost', st.clip, 48 - 2.5, 0.01);
+check('and uptime collapses', st.uptime * 100, (1 - 45.5 / 143) * 100, 0.5);
+check('windows changed', g.setDowntimeWindows(window47) ? 1 : 0, 1, 0);
+st = g.statsFor('Down');
+check('with it, nothing is lost', st.clip, 0, 0.01);
+check('uptime 100%', st.uptime * 100, 100, 0.1);
+check('the span drops the window too', st.activeSeconds, 143 - 47, 0.01);
+check('setting the same windows again changes nothing', g.setDowntimeWindows(window47.slice()) ? 1 : 0, 0, 0);
+
+// Idling before the boss leaves is still idling.
+g = tracker();
+now = 0;
+for (let i = 0; i < 20; i++) { g.record('Late', PLAIN, at(now), 1.0, false, false); now += 2.5; }   // last press 47.5
+g.setDowntimeWindows([{ start: at(58), end: at(105) }]);
+g.record('Late', PLAIN, at(105.5), 1.0, false, false);
+st = g.statsFor('Late');
+// 10.5 s idle before the boss left, 0.5 s after it came back, less the one recast that was turning.
+check('the targetable part of the gap is charged', st.clip, 10.5 + 0.5 - 2.5, 0.02);
+
+section('20b. windows are normalised');
+g = tracker();
+for (let i = 0; i < 8; i++) g.record('Norm', PLAIN, at(2.5 * i), 1.0, false, false);
+g.setDowntimeWindows([
+	{ start: at(40), end: at(50) },   // out of order
+	{ start: at(10), end: at(20) },
+	{ start: at(15), end: at(25) },   // overlapping: must not be counted twice
+	{ start: at(30), end: at(30) },   // empty
+	{ start: at(60), end: at(50) },   // backwards
+	{ start: 'x', end: at(70) },      // garbage
+	null,
+]);
+check('merged into two', g.windows.length, 2, 0);
+check('first window merged', (g.windows[0].end - g.windows[0].start) / 1000, 15, 0.001);
+check('overlap counted once', g.downtimeBetween(at(0), at(100)) / 1000, 25, 0.001);
+check('partial overlap', g.downtimeBetween(at(12), at(18)) / 1000, 6, 0.001);
+check('window outside the range', g.downtimeBetween(at(0), at(5)), 0, 0.001);
+check('empty range', g.downtimeBetween(at(50), at(10)), 0, 0.001);
+check('cleared', g.setDowntimeWindows([]) ? g.windows.length : -1, 0, 0);
+
 console.log('');
 if (failures > 0) {
 	console.log(`==> ${failures} check(s) FAILED`);

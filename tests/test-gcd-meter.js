@@ -269,6 +269,35 @@ check('detected', meter.state.encounters, 3);
 // 137.5 - 3 - 1 = 133.5 -> 135 and 137.5 remain.
 check('cut at the estimated start', out.Combatant.YOU.gcdCount, '2');
 
+// ---------------------------------------------------------------- downtime
+
+section('downtime windows reach the columns');
+// The windows come from the FFLogs parser in the same page (js/fflogs/meter.js downtimeWindows);
+// here they are injected. A 47 s transition in the middle of a clean rotation must cost nothing.
+let injected = [];
+const dtMeter = Factory.create(Object.assign({}, deps, { downtimeWindows: () => injected }));
+dtMeter.init();
+let dtT = 0;
+for (let i = 0; i < 20; i++) { dtMeter.feed(hit(dtT, ALICE, CASCADE)); dtT += 2.5; }   // last press 47.5
+dtT = 95.5;
+for (let i = 0; i < 20; i++) { dtMeter.feed(hit(dtT, ALICE, CASCADE)); dtT += 2.5; }
+let dtOut = dtMeter.overlay(combatData('true', 600), ALICE.name);
+check('no windows: the transition reads as lost time', Number(dtOut.Combatant.YOU.gcdClip), 45.5, 0.01);
+check('none in force', dtMeter.state.downtimeWindows, 0);
+injected = [{ start: T0 + 48000, end: T0 + 95000 }];
+dtOut = dtMeter.overlay(combatData('true', 600), ALICE.name);
+check('with the window: nothing lost', dtOut.Combatant.YOU.gcdClip, '0');
+check('uptime back to 100%', dtOut.Combatant.YOU.gcdUptime, '100');
+check('counted in state', dtMeter.state.downtimeWindows, 1);
+check('seconds in state', dtMeter.state.downtimeSeconds, 47);
+check('snapshot lists the window', dtMeter.snapshot().downtime.length, 1);
+check('a bad provider does not throw', (() => {
+	const bad = Factory.create(Object.assign({}, deps, { downtimeWindows: () => { throw new Error('boom'); } }));
+	bad.init();
+	bad.feed(hit(0, ALICE, CASCADE));
+	return bad.overlay(combatData('true', 10), ALICE.name).gcd.applied;
+})(), true);
+
 // ---------------------------------------------------------------- failure modes
 
 section('without the category snapshot');

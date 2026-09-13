@@ -104,8 +104,10 @@
       uptime: 0,
       /** Total seconds lost to gaps longer than the GCD that preceded them. */
       clip: 0,
-      /** Seconds the player's closed casts occupied - uptime's numerator, before any division. */
+      /** Seconds the player's closed casts occupied. */
       occupiedSeconds: 0,
+      /** Seconds from the first press to the latest one with the downtime windows taken out. */
+      activeSeconds: 0,
       /** Whether the speed stat came from observation rather than the default. */
       recastEstimated: false,
       skillSpeedSamples: 0,
@@ -124,8 +126,10 @@
       // by different stats and must not be pooled.
       skillSpeedIntervals: [],
       spellSpeedIntervals: [],
-      // What the overlay is showing. Measured when a cast is recorded or removed, and only then.
+      // What the overlay is showing. Measured when a cast is recorded or removed, and only then -
+      // unless the downtime windows have moved under it since, which snapshotVersion catches.
       snapshot: emptyStats(),
+      snapshotVersion: -1,
     };
   }
 
@@ -134,9 +138,67 @@
     constructor(actions) {
       this.actions = actions;
       this.byPlayer = new Map();
+      /** Sorted, merged stretches when nothing could be hit. See setDowntimeWindows. */
+      this.windows = [];
+      /** Bumped whenever the windows change, so a stored snapshot knows it is stale. */
+      this.windowsVersion = 0;
     }
 
     clear() { this.byPlayer.clear(); }
+
+    /**
+     * The stretches of the fight when nothing could be hit, from the FFLogs parser's zone handler
+     * (js/fflogs/meter.js downtimeWindows).
+     *
+     * Time inside one of them is taken out of both halves of the measurement: the gap it sits in
+     * is not lost GCD time, and it is not in the span the lost time is measured against. This is
+     * xivanalysis' model, whose denominator is the fight minus its downtime windows, and it is the
+     * difference between M8S' minute-long transition reading as a minute of clipping and reading
+     * as nothing at all. Without a parser there are no windows and every gap is charged, which is
+     * how this behaved before.
+     *
+     * Returns whether anything changed.
+     */
+    setDowntimeWindows(windows) {
+      const clean = [];
+      for (const w of windows || []) {
+        const start = Number(w && w.start);
+        const end = Number(w && w.end);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue;
+        clean.push({ start, end });
+      }
+      clean.sort((a, b) => a.start - b.start);
+
+      // Merged so the overlap of any interval can be summed in one pass, and so two handlers
+      // reporting the same window cannot charge it twice.
+      const merged = [];
+      for (const w of clean) {
+        const last = merged.length > 0 ? merged[merged.length - 1] : null;
+        if (last && w.start <= last.end) last.end = Math.max(last.end, w.end);
+        else merged.push({ start: w.start, end: w.end });
+      }
+
+      if (merged.length === this.windows.length
+        && merged.every((w, i) => w.start === this.windows[i].start && w.end === this.windows[i].end)) {
+        return false;
+      }
+
+      this.windows = merged;
+      this.windowsVersion++;
+      return true;
+    }
+
+    /** How much of [fromMs, toMs) nothing could be hit. */
+    downtimeBetween(fromMs, toMs) {
+      if (this.windows.length === 0 || !(toMs > fromMs)) return 0;
+      let total = 0;
+      for (const w of this.windows) {
+        if (w.end <= fromMs) continue;
+        if (w.start >= toMs) break;
+        total += Math.min(w.end, toMs) - Math.max(w.start, fromMs);
+      }
+      return total;
+    }
 
     get players() { return Array.from(this.byPlayer.keys()); }
 
@@ -181,6 +243,7 @@
       }
 
       state.snapshot = this._measure(state, null);
+      state.snapshotVersion = this.windowsVersion;
       return true;
     }
 
@@ -197,6 +260,7 @@
       const fresh = newState();
       for (const c of casts) this._append(fresh, c);
       fresh.snapshot = this._measure(fresh, null);
+      fresh.snapshotVersion = this.windowsVersion;
       this.byPlayer.set(player, fresh);
       return fresh;
     }
@@ -278,6 +342,7 @@
         state.lastActionId = 0;
         state.lastTimeMs = NaN;
         state.snapshot = this._measure(state, null);
+        state.snapshotVersion = this.windowsVersion;
         return true;
       }
 
@@ -287,6 +352,7 @@
       state.lastActionId = previous.actionId;
       state.lastTimeMs = previous.timeMs;
       state.snapshot = this._measure(state, null);
+      state.snapshotVersion = this.windowsVersion;
       return true;
     }
 
@@ -330,7 +396,15 @@
       const state = player ? this.byPlayer.get(player) : undefined;
       if (!state) return emptyStats();
 
-      if (!includeTrace) return state.snapshot;
+      if (!includeTrace) {
+        // A window that opened or closed since the last press changes what the presses before it
+        // mean, so the stored snapshot is re-measured rather than handed back stale.
+        if (state.snapshotVersion !== this.windowsVersion) {
+          state.snapshot = this._measure(state, null);
+          state.snapshotVersion = this.windowsVersion;
+        }
+        return state.snapshot;
+      }
 
       // Nothing outside the cast list goes into the measurement, so re-deriving it with a trace
       // attached reproduces the snapshot exactly: the rows add up to the number shown.
@@ -379,18 +453,24 @@
 
         occupiedMs += recast;
 
+        // Only the part of the gap when there was something to hit can be lost: the rest is the
+        // boss being untargetable, which is nobody's clipping. A press right before a minute-long
+        // transition and another right after it is a clean rotation.
+        const down = this.downtimeBetween(cast.timeMs, state.casts[i + 1].timeMs);
+        const idle = gap - down;
+
         // Slidecast slack belongs only to a cast that gated the GCD: that is the one whose bar the
         // next press waited on. A Blizzard I runs 1.97s under a 2.45s recast - the recast gates,
         // the bar is irrelevant, and a press 0.5s after the recast ended is half a second of idle,
         // not a slidecast.
         const slack = GCD_ERROR_OFFSET_MS + (occupied.castGated ? SLIDECAST_OFFSET_MS : 0);
-        const lost = gap > recast + slack ? gap - recast : 0;
+        const lost = idle > recast + slack ? idle - recast : 0;
         clipMs += lost;
 
         if (trace) {
           trace.push({
             actionId: cast.actionId, timeMs: cast.timeMs, hardCast: cast.hardCast,
-            recastMs: recast, gapMs: gap, occupiedMs: recast, lostMs: lost,
+            recastMs: recast, gapMs: gap, downMs: down, occupiedMs: recast, lostMs: lost,
           });
         }
       }
@@ -400,7 +480,7 @@
       if (trace) {
         trace.push({
           actionId: newest.actionId, timeMs: newest.timeMs, hardCast: newest.hardCast,
-          recastMs: this._occupiedMs(newest, skillStat, spellStat).ms, gapMs: 0, occupiedMs: 0, lostMs: 0,
+          recastMs: this._occupiedMs(newest, skillStat, spellStat).ms, gapMs: 0, downMs: 0, occupiedMs: 0, lostMs: 0,
         });
       }
 
@@ -415,7 +495,12 @@
       // when it is not: an estimate a few percent high hands every cast more occupancy than the
       // gap it sat in, and thirty such casts manufacture the seconds a real pause cost. Lost time
       // is charged only past the slack, so jitter never counts and a break never stops counting.
-      const spanMs = newest.timeMs - state.casts[0].timeMs;
+      //
+      // The span is the player's own presses with the downtime windows taken out, matching the
+      // numerator: both halves count only the time there was something to hit.
+      const spanMs = newest.timeMs - state.casts[0].timeMs
+        - this.downtimeBetween(state.casts[0].timeMs, newest.timeMs);
+      stats.activeSeconds = Math.max(0, spanMs) / 1000;
       if (spanMs > 0) stats.uptime = Math.max(0, Math.min(1, 1 - clipMs / spanMs));
 
       return stats;

@@ -188,6 +188,48 @@
   }
 
   /**
+   * The stretches of this fight when nothing could be hit, in log time, as the parser's zone
+   * handler has them right now - the open one included, running to the latest line parsed.
+   *
+   * `fight.downtime` is only the total; the windows themselves live on the handler, which is
+   * hand-written per instance (M8S watches its two bodies and the two wolves through the 34
+   * NameToggle lines and the overkill that ends P1). js/gcd/meter.js needs the windows rather than
+   * the total: a GCD gap that sat inside one of them is not a gap the player could have filled.
+   *
+   * Two shapes, because the handlers differ: most keep a downtimeTracker, a few keep the list
+   * themselves. Anything unexpected yields no windows, and the GCD columns simply go back to
+   * charging every gap.
+   */
+  function downtimeWindows() {
+    const out = [];
+    const push = (start, end) => {
+      const s = Number(start);
+      const e = Number(end);
+      if (Number.isFinite(s) && Number.isFinite(e) && e > s) out.push({ start: s, end: e });
+    };
+    try {
+      const handler = parser && parser.logParserOutput && parser.logParserOutput.meterFight
+        ? parser.logParserOutput.meterFight.zoneHandler
+        : null;
+      if (!handler) return out;
+
+      const tracker = handler.downtimeTracker;
+      if (tracker) {
+        for (const w of tracker.committedIntervals || []) push(w.start, w.end);
+        const pending = tracker.pendingInterval;
+        // An open window has no end yet: it runs to wherever the log has got to.
+        if (pending) push(pending.start, Number(pending.end) > Number(pending.start) ? pending.end : state.lastLineMs);
+      }
+
+      for (const w of handler.downtimePeriods || []) push(w.start, w.end);
+      if (Number(handler.downtimeStart) > 0) push(handler.downtimeStart, state.lastLineMs);
+    } catch (e) {
+      state.lastError = 'downtimeWindows: ' + message(e);
+    }
+    return out;
+  }
+
+  /**
    * Follows ACT's encounter through the CombatData stream, in log time: while it runs, it began
    * DURATION ago; once it has ended, the moment it ended is kept and its start frozen from that.
    * isAuthoritative asks whether that start fell inside the parser's fight. A page opened after an
@@ -267,6 +309,7 @@
     feed,
     collect,
     snapshot,
+    downtimeWindows,
     isAuthoritative,
     noteEncounter,
     overlay,

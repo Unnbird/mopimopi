@@ -108,6 +108,17 @@
     const categoryData = deps.categoryData !== undefined ? deps.categoryData : root.GcdActionCategoryData;
     const actionTable = deps.actionTable !== undefined ? deps.actionTable : root.GcdActionTable;
 
+    /**
+     * The stretches when nothing could be hit, from the FFLogs parser running in the same page.
+     * It is the only thing here that knows them - they come out of hand-written per-instance code
+     * in the parser, not out of the log. Without it the columns still work, they just charge a
+     * phase transition as lost GCD time the way they used to.
+     */
+    const downtimeWindows = deps.downtimeWindows || function () {
+      const m = root.FflogsMeter;
+      return m && typeof m.downtimeWindows === 'function' ? m.downtimeWindows() : [];
+    };
+
     // Every counter between "a line reached the page" and "a number reached a row". The first
     // thing to read (GcdMeter.state in the overlay's console) when the columns read zero.
     const state = {
@@ -125,6 +136,9 @@
       malformed: 0,
       encounters: 0,
       applied: 0,
+      /** Downtime windows in force, and the seconds they cover: 0 when no parser is feeding them. */
+      downtimeWindows: 0,
+      downtimeSeconds: 0,
       lastLineMs: NaN,
       lastAbilityMs: NaN,
       lastActive: null,
@@ -457,6 +471,25 @@
 
     // ------------------------------------------------------------------ output
 
+    /**
+     * Hands the tracker the fight's current downtime windows, so a gap that sat inside one stops
+     * counting as lost GCD time. Read once per CombatData: they only move when a boss becomes
+     * targetable or stops being.
+     */
+    function refreshDowntime() {
+      if (!tracker) return;
+      let windows = [];
+      try {
+        windows = downtimeWindows() || [];
+      } catch (e) {
+        state.lastError = 'downtime: ' + message(e);
+        return;
+      }
+      tracker.setDowntimeWindows(windows);
+      state.downtimeWindows = tracker.windows.length;
+      state.downtimeSeconds = tracker.windows.reduce((n, w) => n + (w.end - w.start) / 1000, 0);
+    }
+
     /** One player's numbers, by the name the log lines use. Zeros and the 2.5s default for anyone unknown. */
     function statsFor(name) {
       if (!tracker) return Tracker.emptyStats();
@@ -495,6 +528,7 @@
 
       try {
         syncEncounter(detail);
+        refreshDowntime();
         const written = Apply.applyGcd(detail, statsFor, localName(myName));
         state.applied++;
         return tag(detail, true, 'applied', written);
@@ -515,6 +549,7 @@
             gcdCount: gcd.count,
             gcdClip: Math.round(gcd.clip * 10) / 10,
             gcdOccupied: Math.round(gcd.occupiedSeconds * 10) / 10,
+            activeSeconds: Math.round(gcd.activeSeconds * 10) / 10,
             gcdRecast: Math.round(gcd.recast * 100) / 100,
             speedStat: gcd.speedStat,
             recastEstimated: gcd.recastEstimated,
@@ -529,6 +564,7 @@
         actionRecastsKnown: actions ? actions.actionCount : 0,
         hasteStatusesKnown: actions ? actions.speedStatusCount : 0,
         knownPlayers: statuses ? statuses.knownPlayers : [],
+        downtime: tracker ? tracker.windows.map((w) => ({ start: w.start, end: w.end, seconds: (w.end - w.start) / 1000 })) : [],
       };
     }
 
@@ -551,11 +587,12 @@
         );
         if (gcd.trace && gcd.trace.length > 0) {
           const first = gcd.trace[0].timeMs;
-          lines.push('    t(s)    action  cast  recast   gap   occupied  lost');
+          lines.push('    t(s)    action  cast  recast   gap   down  occupied  lost');
           for (const c of gcd.trace) {
             lines.push(
               '    ' + ((c.timeMs - first) / 1000).toFixed(2).padStart(6) + '  ' + c.actionId.toString(16).toUpperCase().padStart(6)
               + '  ' + (c.hardCast ? 'hard' : 'inst') + '  ' + (c.recastMs / 1000).toFixed(2).padStart(6) + '  ' + (c.gapMs / 1000).toFixed(2).padStart(6)
+              + '  ' + ((c.downMs || 0) / 1000).toFixed(2).padStart(5)
               + '  ' + (c.occupiedMs / 1000).toFixed(2).padStart(8) + '  ' + (c.lostMs / 1000).toFixed(2).padStart(5)
             );
           }

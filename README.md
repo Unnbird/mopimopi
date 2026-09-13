@@ -20,7 +20,7 @@
 | DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT。對上時所有每秒數值的分母是 **fight 時長減 downtime**（見〈兩個時鐘〉） | 無 |
 | **rDPS / aDPS / nDPS / cDPS / ±Buff** | 內建 FFLogs 解析器，且只有它：`apply.js` 把每人的 `amount / amountTaken / singleTargetAmountTaken / amountGiven` 寫進該列，`Person.recalculate()` 用 `amount − amountTaken + amountGiven` 等四式除以時長。解析器沒接上（標題列顯示 `ACT`）時這幾欄是 0 | 無 |
 | 治療、HPS、溢療、治療數、爆擊治療、最大治療 | ACT。這版解析器的 meters 對玩家不記治療（見〈限制〉），只有 HPS 改用 fight 時長去除 | 無 |
-| **GCD%（運轉率）、GCDs（次數）、Lost（空窗秒數）、GCD（推估 recast）** | 頁面內建 `js/gcd/`：`meter.js` 吃 20/21/22/23 行記 GCD、26/30 行記加速狀態，`apply.js` 把 `gcdUptime / gcdCount / gcdClip / gcdOccupied / gcdRecast` 寫進該列。`GCD%` 是每次按出 GCD 時量好的百分比，原樣顯示、不再除 | 無 |
+| **GCD%（運轉率）、GCDs（次數）、Lost（空窗秒數）、GCD（推估 recast）** | 頁面內建 `js/gcd/`：`meter.js` 吃 20/21/22/23 行記 GCD、26/30 行記加速狀態，`apply.js` 把 `gcdUptime / gcdCount / gcdClip / gcdOccupied / gcdRecast` 寫進該列。王打不到的時段由解析器提供並從分子分母兩邊扣掉。`GCD%` 是每次按出 GCD 時量好的百分比，原樣顯示、不再除 | 無 |
 | 揮擊數、miss、命中率、承受傷害/治療、盾、Last 10/30/60/180 DPS | ACT | 無 |
 
 `Limit Break` 在 FFLogs 與 ACT 都是獨立角色，不收不給 buff，所以它的 rDPS 等於自己的 DPS。
@@ -92,9 +92,9 @@ FFLogs 的每秒數值用兩個不同的分母，這不是本專案的慣例，�
 
 | key | 說明 |
 |---|---|
-| `gcdUptime` | GCD 運轉率（%）：第一次按鍵到最新一次按鍵之間，GCD 在轉的比例。**已經除好的值，原樣顯示、不要自己再除**：它在每次打出 GCD 的當下量一次 |
+| `gcdUptime` | GCD 運轉率（%）：第一次按鍵到最新一次按鍵之間、扣掉王打不到的時段，GCD 在轉的比例。**已經除好的值，原樣顯示、不要自己再除**：它在每次打出 GCD 的當下量一次 |
 | `gcdCount` | GCD 次數（只計戰技與魔法） |
-| `gcdClip` | GCD 之間空窗損失的總秒數 |
+| `gcdClip` | GCD 之間空窗損失的總秒數（不含王打不到的時段） |
 | `gcdOccupied` | 已結束的 GCD 佔用的總秒數（`gcdUptime` 的分子）。分母是該玩家**自己的按鍵區間**，不是戰鬥時長 |
 | `gcdRecast` | 該玩家 2.5 秒基準的 GCD，由推估出的速度屬性算出；樣本不足時是 2.5 |
 
@@ -115,6 +115,14 @@ FFLogs 的每秒數值用兩個不同的分母，這不是本專案的慣例，�
 **運轉率是在打出 GCD 的那一刻量的，量完就定住，直到下一次 GCD。** 分母不用戰鬥時長的原因在時鐘：ACT 的時長是傷害驅動的，有傷害落地才往前走；而 GCD 是按下去就記（20 行），硬詠唱的傷害要一整段詠唱之後才落地，用戰鬥時長當分母，瞬發之後接任何硬詠唱都會讓運轉率鋸齒一次。代價：戰鬥開始到第一次按鍵之間不算；最後一次按鍵之後的閒置要等下一次按鍵才會被算進去，中途倒地的人運轉率停在倒下那一刻。
 
 **空窗（lost）** 對應 xivanalysis 的 downtime windows：`間隔 > recast + 150ms` 才算，150ms 是 100ms 詠唱稅加 50ms 抖動（`GCD_ERROR_OFFSET`）；硬詠唱後再多給 500ms 的滑步窗（`SLIDECAST_OFFSET`）。
+
+### 王打不到的時間不算
+
+轉場、無敵、過場動畫這些「誰都打不到」的時段，從分子與分母**兩邊**都拿掉：那段間隔不是空窗，也不進運轉率的分母。這就是 xivanalysis 的模型（分母 = 戰鬥時長 − downtime windows）。
+
+區間由同一頁的 FFLogs 解析器提供（`FflogsMeter.downtimeWindows()`），每次 CombatData 交給追蹤器一次；區間變動時已量好的數字會重新量一次。M8S 實測：前半場 P1 的空窗從 30.3 秒降到 17.4 秒、運轉率 92.6% → 95.6%，而後半場某人陣亡的 28 秒仍然照算（全隊那時都在打，那不是 downtime）。
+
+downtime 怎麼來的見〈兩個時鐘〉：log 裡沒有這個欄位，是解析器用 `34`（NameToggle）行與 overkill 推的，而且只有它認得的副本才有。沒有解析器時沒有區間，行為就跟以前一樣，每個間隔照算。
 
 **GCD 是按下去就開始轉。** 硬詠唱在 20 行（StartsCasting）收到時就記錄，傷害落地時帶著同一個時間戳會被去重擋掉；23 行（詠唱中斷）把那筆暫記移除。20 行帶的詠唱條長度（已含速度、加速與職業機制）優先於資料表的值。AoE 一次打八個目標會有八行，用「同一施放者 + 同一技能 id + 同一時間戳」去重。
 
@@ -150,7 +158,7 @@ node tools/Build-ActionData.js [xivanalysis 路徑]      # 重新產生 js/gcd/a
 
 ### 還沒做到的
 
-- **分母沒有扣掉 downtime。** xivanalysis 的分母是「戰鬥時長 − boss 無敵時間」，這裡沒有 targetability 追蹤，有 phase 轉換的戰鬥每個人的運轉率都會偏低。
+- **downtime 靠 FFLogs 解析器提供。** 沒有它（或這個副本沒有 handler、頁面進本後才開）就沒有區間，轉場又會被算成空窗。
 - **MNK / NIN 的職業基礎加成沒有單獨套用**（資料檔裡有，但沒接上）。
 - **第一次按鍵之前、最後一次按鍵之後都不算**（見上）。
 
@@ -169,7 +177,7 @@ node tools/Replay-Overlay.js "%APPDATA%\Advanced Combat Tracker\FFXIVLogs\Networ
 ```js
 GcdMeter.state              // 每個計數器：收到幾行、幾個 20/21 行、記了幾個 GCD、分類表與 recast 表有沒有載到
 GcdMeter.snapshot()         // 每人的統計與推估的速度屬性
-GcdMeter.dump('角色名')     // 逐 GCD 一行：時間、技能 id、硬詠唱與否、記入的 recast、到下一次的間隔、佔用、損失
+GcdMeter.dump('角色名')     // 逐 GCD 一行：時間、技能 id、硬詠唱與否、記入的 recast、到下一次的間隔、其中打不到的秒數、佔用、損失
 lastCombatRaw.gcd           // 最近一次 CombatData 有沒有寫入、寫了幾列、原因
 ```
 
@@ -179,6 +187,7 @@ lastCombatRaw.gcd           // 最近一次 CombatData 有沒有寫入、寫了�
 | `state.lines` 是 0 | 沒收到 Chat 行：懸浮窗不是 ACTWebSocket 相容模式 |
 | `state.abilityLines` 有數字但 `gcdsRecorded` 是 0 | 21 行的來源不是玩家（id 不是 1 開頭），或分類表把它們都判成 oGCD |
 | `state.unknownActions` 一直漲 | 分類表快照過期，重跑 `Build-ActionCategories.ps1` |
+| `state.downtimeWindows` 是 0 但這場有轉場 | 解析器沒給區間：頁面進本後才開（少了 01 換區行），或這個副本沒有 handler。轉場會被算成空窗 |
 
 ## 檔案
 
@@ -188,7 +197,7 @@ lastCombatRaw.gcd           // 最近一次 CombatData 有沒有寫入、寫了�
 | `js/fflogs/host-logic.js` | 選最新一場、寵物併入主人、治療/死亡/最大傷害的純函式 |
 | `js/fflogs/apply.js` | 把 FFLogs 數值寫進 CombatData 字串欄位的純函式；含對場規則與兩個時鐘（`clocksOf`） |
 | `js/fflogs/meter.js` | 在頁面裡跑解析器、吃 Chat 行、每 0.5 秒 collect、決定要不要覆蓋 |
-| `js/gcd/tracker.js` | GCD 運轉率模型（xivanalysis）：速度屬性推估、佔用、空窗、一次 GCD 量一次、換場截斷 |
+| `js/gcd/tracker.js` | GCD 運轉率模型（xivanalysis）：速度屬性推估、佔用、空窗、一次 GCD 量一次、換場截斷、downtime 區間 |
 | `js/gcd/status-tracker.js` | 誰身上掛著什麼狀態、誰是玩家、`YOU` 對應真名 |
 | `js/gcd/action-data.js` + `actions-data.js` | 每個技能的 recast / 詠唱時間 / 速度屬性、加速狀態，與速度公式（Allagan Studies） |
 | `js/gcd/categories.js` + `action-categories-data.js` | GCD / oGCD 分類表快照與讀取 |
