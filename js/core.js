@@ -284,6 +284,16 @@ function domReady() {
         console.log("[ERROR] : WebSocket has Error [] " + ex)
     }
     try {
+        // Settings may not be loaded yet at this point (ui.js reads them in its own ready handler),
+        // so start with the default region; ui.js hands the stored one over as soon as it has it.
+        if (typeof FflogsMeter !== 'undefined') {
+            var fflogsRegion = (typeof init !== 'undefined' && init && init.q && init.q.fflogsRegion) ? init.q.fflogsRegion : 1
+            FflogsMeter.init(fflogsRegion)
+        }
+    } catch (ex) {
+        console.log("[ERROR] : FFLogs parser failed to start " + ex)
+    }
+    try {
         document.addEventListener('beforeLogLineRead', beforeLogLineRead)
     } catch (ex) { }
     try {
@@ -312,7 +322,9 @@ function onRecvMessage(e) {
 }
 function onBroadcastMessage(e) {
     if (e.detail.msgtype == "CombatData") {
-        lastCombatRaw = e.detail.msg;
+        // FFLogs' parser (js/fflogs/meter.js) writes its figures over the message first, when it is
+        // loaded, switched on and on the same pull; otherwise the message passes through as it came.
+        lastCombatRaw = (typeof FflogsMeter !== 'undefined') ? FflogsMeter.overlay(e.detail.msg, myName) : e.detail.msg;
         lastCombat = new Combatant({
             detail: lastCombatRaw
         }, sortKey);
@@ -337,6 +349,9 @@ function onBroadcastMessage(e) {
             case "AbilityUse":
                 break;
             case "Chat":
+                // In OverlayPlugin's ACTWebSocket compatibility mode every network log line
+                // arrives here as the raw line; that is the feed FFLogs' parser lives on.
+                if (typeof FflogsMeter !== 'undefined') FflogsMeter.feed(e.detail.msg);
                 document.dispatchEvent(new CustomEvent("onChatting", {
                     detail: e.detail.msg
                 }));
@@ -742,6 +757,9 @@ function Combatant(e, sortkey) {
     this.summonerMerge = !0;
     this.sortkey = sortkey;
     this.isActive = e.detail.isActive;
+    // Where the figures came from, as FflogsMeter.overlay() tagged the message: null when the
+    // parser is not loaded at all (and for the settings preview), so the header can stay quiet.
+    this.fflogs = e.detail.fflogs || null;
     this.combatKey = this.Encounter.title.concat(this.Encounter.damage).concat(this.Encounter.healed);
     this.persons = this.Combatant;
     this.resort()

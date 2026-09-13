@@ -17,6 +17,51 @@ d = {
         CN: "一般",
         TW: "一般"
     },
+    fflogsPrefer: {
+        KR: "FFLogs 파서 데이터 우선 사용",
+        JP: "FFLogsパーサーのデータを優先",
+        EN: "Prefer FFLogs Parser Data",
+        FR: "Priorité aux données du parseur FFLogs",
+        DE: "FFLogs-Parser-Daten bevorzugen",
+        CN: "优先使用 FFLogs 解析器数据",
+        TW: "優先使用 FFLogs 解析器數據"
+    },
+    fflogsRegion: {
+        KR: "FFLogs 파서 지역",
+        JP: "FFLogsパーサーのリージョン",
+        EN: "FFLogs Parser Region",
+        FR: "Région du parseur FFLogs",
+        DE: "Region des FFLogs-Parsers",
+        CN: "FFLogs 解析器区域",
+        TW: "FFLogs 解析器區域"
+    },
+    fflogsRegionGlobal: {
+        KR: "글로벌 (JP/NA/EU/OCE)",
+        JP: "グローバル (JP/NA/EU/OCE)",
+        EN: "Global (JP/NA/EU/OCE)",
+        FR: "Global (JP/NA/EU/OCE)",
+        DE: "Global (JP/NA/EU/OCE)",
+        CN: "国际服 (JP/NA/EU/OCE)",
+        TW: "國際服 (JP/NA/EU/OCE)"
+    },
+    fflogsRegionCN: {
+        KR: "중국",
+        JP: "中国",
+        EN: "China",
+        FR: "Chine",
+        DE: "China",
+        CN: "国服",
+        TW: "中國服"
+    },
+    fflogsRegionKR: {
+        KR: "한국",
+        JP: "韓国",
+        EN: "Korea",
+        FR: "Corée",
+        DE: "Korea",
+        CN: "韩服",
+        TW: "韓服"
+    },
     fullscreen: {
         KR: "전체 화면 모드<font class='ex'>　❙ 모바일</font>",
         JP: "フルスクリーンモード<font class='ex'>　❙ モバイル</font>",

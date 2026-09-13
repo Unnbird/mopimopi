@@ -217,6 +217,10 @@ l = {
                     },
                     e: "dr_checkbox"
                 },
+                fflogs: {
+                    tt: d.fflogsPrefer,
+                    e: "dr_checkbox"
+                },
                 fullscreen: {
                     tt: d.fullscreen,
                     e: "dr_link"
@@ -558,6 +562,24 @@ l = {
                     i: "merge_type",
                     e: "li_checkbox",
                     ul: 1
+                },
+                fflogs: {
+                    tt: d.fflogsPrefer,
+                    i: "verified",
+                    e: "li_checkbox",
+                    ul: 0
+                },
+                fflogsRegion: {
+                    tt: d.fflogsRegion,
+                    m: {
+                        1: d.fflogsRegionGlobal,
+                        5: d.fflogsRegionCN,
+                        4: d.fflogsRegionKR
+                    },
+                    i: "public",
+                    e: "li_radio",
+                    p: "Data_general",
+                    ul: 0
                 }
             }
         },

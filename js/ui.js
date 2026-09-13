@@ -21,6 +21,8 @@ $().ready(function () {
     init = JSON.parse(localStorage.getItem("Mopi2_HAERU"))
     addOption()
     lang = init.q.Lang
+    // core.js started the parser before the settings were read; hand it the stored region now.
+    if (typeof FflogsMeter !== 'undefined') FflogsMeter.setRegion(init.q.fflogsRegion)
 
     // 2024-12-09 레이드 변환 인원수 늘림
     if(init.q.view24_Number == 10) {
@@ -30,7 +32,7 @@ $().ready(function () {
     initOverlay()
 });
 function addOption() {
-    var qVal = ['bar_position_DPS', 'mhh_unit', 'dmgType', 'view24_Number', 'time_italic', 'target_italic', 'rps_italic', 'header_italic', 'body_italic', 'iconSet', 'borderTextType', 'max_unit', 'act_md', 'act_mh', 'unit_ns', 'sortDPS', 'sortHPS', 'sortDescDPS', 'sortDescHPS']
+    var qVal = ['bar_position_DPS', 'mhh_unit', 'dmgType', 'view24_Number', 'time_italic', 'target_italic', 'rps_italic', 'header_italic', 'body_italic', 'iconSet', 'borderTextType', 'max_unit', 'act_md', 'act_mh', 'unit_ns', 'sortDPS', 'sortHPS', 'sortDescDPS', 'sortDescHPS', 'fflogs', 'fflogsRegion']
     var RangeVal = ['tableLineVer', 'sizeLineVer', 'view24TableYOU', 'view24TableOther', 'view24BgYOU', 'view24BgOther', 'size24BodyNameText', 'size24BodyDataText', 'size24BodyIcon', 'size24TableSlice', 'size24TableHeight', 'size24TableIdxWd']
     var colorVal = ['VPR', 'PCT', 'RPR', 'SGE', 'DNC', 'GNB', 'BLU', 'tableLineVer', 'tableBorderYOU', 'tableBorderOther', 'view24TableYOU', 'view24TableOther', 'view24BgYOU', 'view24BgOther']
     putValue(qVal, 'q')
@@ -474,7 +476,7 @@ function liReload() {
                 } else
                     init.q[id] = 0
             }
-            if ((id == 'pets' || id == 'hideName' || id == 'view24') && view != 'settings') {
+            if ((id == 'pets' || id == 'hideName' || id == 'view24' || id == 'fflogs') && view != 'settings') {
                 if (lastCombat != null)
                     update(lastDPS, lastHPS)
             }
@@ -501,6 +503,8 @@ function liReload() {
                 init.ColData[name[1]][name[0]] = $(this).find(':radio').val();
             } else
                 init.q[$(this).find(':radio').attr('name')] = $(this).find(':radio').val()
+            if ($(this).find(':radio').attr('name') == 'fflogsRegion' && typeof FflogsMeter !== 'undefined')
+                FflogsMeter.setRegion(init.q.fflogsRegion)
             if ($(this).find(':radio').attr('name') == 'view24_Number') {
                 $('li#' + $(this).find(':radio').attr('name') + ' .gVal').text(l.raid.tab_general.inner.view24_Number.msg[lang].replace('★', $(this).text()))
                 if (init.q.view24_Number == 1)

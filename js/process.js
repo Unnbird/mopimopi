@@ -127,6 +127,10 @@ function update(lastDPS, lastHPS) {
         $('nav table[name=ACT_1line]').fadeIn(0)
     }    
     $('[name=target]').text(lastDPS.Encounter.title)
+    // Whose figures the table shows. Only tagged messages carry `fflogs` (the settings preview and
+    // a mopimopi without the parser do not), so those keep the header exactly as it was.
+    if (lastDPS.fflogs && typeof FflogsMeter !== 'undefined' && init.q.fflogs != 0)
+        $('[name=target]').append(' <font class="ex">' + (lastDPS.fflogs.applied ? 'FFLogs' : 'ACT') + '</font>')
     $('[name=time]').text(lastDPS.Encounter.duration)
     if (init.q.tableOrder == 1)
         $('div[name=main' + _ + ']').html('<div id="DPSHeader' + _ + '"><div id="DPSoldHeader' + _ + '"></div></div><div id="DPSBody' + _ + '"><div id="DPSoldBody' + _ + '"></div></div><div id="HPSHeader' + _ + '"><div id="HPSoldHeader' + _ + '"></div></div><div id="HPSBody' + _ + '"><div id="HPSoldBody' + _ + '"></div></div>')
