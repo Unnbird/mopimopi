@@ -90,6 +90,29 @@ check('recast', st.recast, 2.50, 0.01);
 check('no phantom clip', st.clip, 0, 0.01);
 check('uptime 100%', st.uptime * 100, 100, 0.1);
 
+section('12b. Ninja: 2.12s job-haste GCD with mudras and Ninjutsu in it');
+// The 15% job haste is not modelled separately; the estimate absorbs it and lands within one 45ms
+// batch of the 2.12s the Ninja's tooltip says (a synthetic cadence with zero jitter sits on a
+// single batch and reads its midpoint, 2.14; real logs spread over neighbouring batches and
+// average back). Mudras (0.5s flat) and Ninjutsu (1.5s flat) sit inside without voting on the
+// estimate or leaving phantom gaps.
+const TEN = 2259, CHI = 2261, RAITON = 2267;
+g = tracker();
+now = 0;
+for (let cycle = 0; cycle < 6; cycle++) {
+	for (let i = 0; i < 3; i++) { g.record('Nin2', PLAIN, at(now), 1.0, false, false); now += 2.12; }
+	g.record('Nin2', TEN, at(now), 1.0, false, false); now += 0.5;
+	g.record('Nin2', CHI, at(now), 1.0, false, false); now += 0.5;
+	g.record('Nin2', RAITON, at(now), 1.0, false, false); now += 1.5;
+}
+g.record('Nin2', PLAIN, at(now), 1.0, false, false);
+st = g.statsFor('Nin2');
+check('count', st.count, 37, 0);
+check('recast 2.12s, within one batch', st.recast, 2.12, 0.03);
+check('no phantom clip', st.clip, 0, 0.01);
+check('uptime 100%', st.uptime * 100, 100, 0.1);
+check('only the plain weaponskills voted', st.skillSpeedSamples, 6 * 3, 0);
+
 section('13. haste: a 0.80 modifier shortens the GCD, not the score');
 g = tracker();
 now = 0;

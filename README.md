@@ -106,14 +106,19 @@ node tools/Build-ActionData.js [xivanalysis 路徑]      # 重新產生 js/gcd/a
 
 ### 怎麼分辨 GCD 和 oGCD
 
-FFXIV_ACT_Plugin 內嵌的 `ActionCategoryList` 就是 `技能id | 分類`：分類 2（魔法）與 3（戰技）是 GCD，1（自動攻擊）與 4（能力技）不是。外掛可以在 ACT 程序裡直接讀這張表，網頁不能，所以這裡帶一份快照 `js/gcd/action-categories-data.js`：每個技能 id 一個字元（index = id、base-36 數字 = 分類），約 49 KB。
+兩個來源，先問 xivanalysis、再問遊戲的分類表：
+
+1. **xivanalysis 的 `onGcd` 旗標**：`js/gcd/actions-data.js` 的 `onGcd` 清單，約 560 個技能 id，這是模型自己對「這一按會不會滾 GCD」的定義。有列出來的一律是 GCD。
+2. **FFXIV_ACT_Plugin 內嵌的 `ActionCategoryList`**：`技能id | 分類`，分類 2（魔法）與 3（戰技）是 GCD，1（自動攻擊）與 4（能力技）不是。外掛可以在 ACT 程序裡直接讀這張表，網頁不能，所以這裡帶一份快照 `js/gcd/action-categories-data.js`：每個技能 id 一個字元（index = id、base-36 數字 = 分類），約 49 KB。xivanalysis 沒列的技能靠它。
+
+**為什麼不能只看分類表**：忍者的結印（天・地・人）與所有忍術在遊戲資料裡都是分類 4「能力技」，但天→地→雷遁實際佔了 0.5 + 0.5 + 1.5 秒的 GCD。只看分類表會完全看不到這 2.5 秒，每次忍術都記成一段空窗，忍者的運轉率因此崩掉；武僧的三種打坐（1 秒 GCD）與武士的默想同理。全職業掃過一遍，兩張表不一致的只有這幾組（加上不追蹤的青魔與極限技），反向（分類說是 GCD、xivanalysis 說不是）一筆也沒有。OverlayPluginAddon 只看分類表，所以它算的忍者也是錯的。
 
 ```powershell
 .\tools\Build-ActionCategories.ps1                      # 從 %APPDATA%\Advanced Combat Tracker\Plugins\FFXIV_ACT_Plugin.dll 重新產生
 .\tools\Build-ActionCategories.ps1 <FFXIV_ACT_Plugin.dll 或 FFXIV_ACT_Plugin.Resource.dll 路徑>
 ```
 
-給它發行版的 `FFXIV_ACT_Plugin.dll` 即可，它會自己把 Costura 壓在裡面的 Resource 組件解出來。**每次遊戲改版後重跑一次**：快照裡沒有的技能 id（改版新增的）只有在出現詠唱條時才算 GCD，瞬發的一律不算。
+給它發行版的 `FFXIV_ACT_Plugin.dll` 即可，它會自己把 Costura 壓在裡面的 Resource 組件解出來。**每次遊戲改版後兩個產生器都重跑一次**：兩張表都沒有的技能 id（改版新增的）只有在出現詠唱條時才算 GCD，瞬發的一律不算。
 
 ### 場次邊界
 
@@ -174,7 +179,7 @@ node tests/test-gcd-columns.js
 
 - `test-fflogs-overlay.js`：假 CombatData + 假 fight 過一遍覆蓋邏輯（每個欄位、`YOU` 對應本機玩家真名、寵物三種情形、Limit Break、不對場保留原樣、沒有治療表時保留 ACT 治療、時長格式）。
 - `test-core-person.js`：把 `js/core.js` 放進 Node vm 跑真正的 `Person`，確認 rDPS 四欄只從 FFLogs 的四個總量算出、舊 RdpsOverlay 的匝出欄位被忽略、GCD 欄位原樣通過不被再除。
-- `test-gcd-tracker.js`：OverlayPluginAddon `Test-Gcd.ps1` 的全部情境逐字搬過來（乾淨輪轉、技速推估、舞步與忍術的固定 recast、加速窗口、靈感只作用於指定技能、長詠唱與詠唱稅、真實空窗、AoE 去重、瞬發 vs 硬詠唱、連續魔法的交替輪替、硬詠唱開始不會讓運轉率飆高、一次 GCD 只量一次、時間戳抖動、150ms 損失 slack、運轉率不超過 100%、樣本不足退回預設），加上詠唱中斷回捲與換場截斷。改動 `js/gcd/tracker.js` / `action-data.js` / `actions-data.js` 後都該重跑。
-- `test-gcd-meter.js`：用合成的網路 log 行餵 `meter.js`：誰是玩家、oGCD 與自動攻擊不算、詠唱條與落地配對去重、詠唱中斷、過期詠唱條、加速狀態、快照沒有的技能、`YOU` 對應（含 02 行）、CombatData 判斷換場、缺資料表時的行為、壞行不會拋錯。
+- `test-gcd-tracker.js`：OverlayPluginAddon `Test-Gcd.ps1` 的全部情境逐字搬過來（乾淨輪轉、技速推估、舞步與忍術的固定 recast、忍者 2.12 秒輪替中的結印與忍術、加速窗口、靈感只作用於指定技能、長詠唱與詠唱稅、真實空窗、AoE 去重、瞬發 vs 硬詠唱、連續魔法的交替輪替、硬詠唱開始不會讓運轉率飆高、一次 GCD 只量一次、時間戳抖動、150ms 損失 slack、運轉率不超過 100%、樣本不足退回預設），加上詠唱中斷回捲與換場截斷。改動 `js/gcd/tracker.js` / `action-data.js` / `actions-data.js` 後都該重跑。
+- `test-gcd-meter.js`：用合成的網路 log 行餵 `meter.js`：誰是玩家、oGCD 與自動攻擊不算、詠唱條與落地配對去重、詠唱中斷、過期詠唱條、加速狀態、忍者的結印與忍術雖是分類 4 仍算 GCD、快照沒有的技能、`YOU` 對應（含 02 行）、CombatData 判斷換場、缺資料表時的行為、壞行不會拋錯。
 - `test-gcd-categories.js`：分類表快照載得起來、筆數對、已知技能分類正確（Cascade / Fire IV 是 GCD，Fan Dance / 戰鬥連禱 / 夜殺 / 自動攻擊不是）。
 - `test-gcd-columns.js`：照 `index.html` 的順序把 `js/gcd/*.js` 當成 `<script>` 載進假的 window，確認 `window.GcdMeter` 起得來、寫得進 CombatData；再確認四個 GCD 欄位在 init / dic / lang / process 四個檔裡都有對應，且沒有任何開關混進設定樹。

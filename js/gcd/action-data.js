@@ -62,11 +62,25 @@
        * combo pressed inside Starry Muse must not inherit its 0.75.
        */
       this.speedStatusLimits = new Map();
+      /**
+       * Every action xivanalysis flags as rolling the GCD. FFXIV's own category files a Ninja's
+       * mudras and Ninjutsu (and Monk's meditations, Samurai's Meditate) under "Ability", so a
+       * consumer that only asked the category table saw Ten - Chi - Raiton as two and a half
+       * seconds of nothing.
+       */
+      this.onGcdIds = new Set();
       this.loadError = null;
     }
 
     get actionCount() { return this.byId.size; }
     get speedStatusCount() { return this.speedStatuses.size; }
+    get onGcdCount() { return this.onGcdIds.size; }
+
+    /**
+     * Whether xivanalysis says the action rolls the GCD. False also for an id it does not list,
+     * which the caller resolves through the category table.
+     */
+    isOnGcd(actionId) { return this.onGcdIds.has(actionId); }
 
     /** The action's row, or the 2.5s / skill-speed default. */
     get(actionId) { return this.byId.get(actionId) || DEFAULT_DEF; }
@@ -126,6 +140,11 @@
           }
           data.speedStatusLimits.set(id, set);
         }
+      }
+
+      for (const v of Array.isArray(table.onGcd) ? table.onGcd : []) {
+        const id = num(v);
+        if (id !== undefined) data.onGcdIds.add(id);
       }
     } catch (e) {
       data.loadError = String((e && e.message) || e);

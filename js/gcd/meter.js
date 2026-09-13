@@ -161,7 +161,7 @@
         };
 
         actions = ActionData.load(actionTable);
-        state.actions = { count: actions.actionCount, speedStatuses: actions.speedStatusCount, error: actions.loadError };
+        state.actions = { count: actions.actionCount, speedStatuses: actions.speedStatusCount, onGcd: actions.onGcdCount, error: actions.loadError };
 
         statuses = new StatusTracker();
         tracker = new Tracker(actions);
@@ -255,12 +255,22 @@
     }
 
     /**
-     * Whether the action is a GCD. The snapshot decides for every id it knows. An id it has never
-     * heard of - added by a patch after the snapshot - counts only when it showed a cast bar:
-     * players' hard casts are weaponskills and spells, and an instant of unknown kind could as
-     * easily be an oGCD.
+     * Whether the action rolls the GCD.
+     *
+     * xivanalysis' own onGcd flag decides first. FFXIV files a Ninja's mudras and every Ninjutsu
+     * under ActionCategory 4, "Ability" - correctly, they are not weaponskills - yet Ten, Chi,
+     * Raiton are 0.5s + 0.5s + 1.5s of GCD, and asking the category alone left that whole stretch
+     * reading as lost time, a few seconds per minute off every Ninja's uptime. Monk's meditations
+     * and Samurai's Meditate are the same case; a scan of every job found no action the category
+     * calls a GCD that xivanalysis says is not.
+     *
+     * The category snapshot decides for everything xivanalysis does not list. An id neither knows
+     * - added by a patch after both snapshots - counts only when it showed a cast bar: players'
+     * hard casts are weaponskills and spells, and an instant of unknown kind could as easily be an
+     * oGCD.
      */
     function isGcdAction(actionId, hardCast) {
+      if (actions.isOnGcd(actionId)) return true;
       if (categories.knows(actionId)) return categories.isGcd(actionId);
       state.unknownActions++;
       return hardCast;

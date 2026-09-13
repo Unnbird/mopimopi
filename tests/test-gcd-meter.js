@@ -160,6 +160,45 @@ for (let i = 0; i < 10; i++) meter.feed(hit(40.5 + 2.5 * i, CARA, GLARE_III));
 st = meter.statsFor(CARA.name);
 check('back at 2.5s: still clean', st.clip, 0, 0.01);
 
+// ---------------------------------------------------------------- ninja
+
+section('Ninja: mudras and Ninjutsu are GCDs although the game files them as abilities');
+// FFXIV's ActionCategory for Ten/Chi/Jin and every Ninjutsu is 4 ("Ability"). Asked alone, the
+// category table saw Ten - Chi - Raiton as a 2.5s hole after Aeolian Edge and booked it as lost
+// time on every single Ninjutsu. xivanalysis' onGcd flag has to win.
+const NIN = { id: '1000AAAA', name: 'Nami Ninja' };
+const SPINNING_EDGE = '8C0', GUST_SLASH = '8C2', AEOLIAN_EDGE = '8CF';
+const TEN = '8D3', CHI = '8D5', RAITON = '8DB';
+const FUMA_TCJ = '49B9', RAITON_TCJ = '49BD', SUITON_TCJ = '49C1';
+check('Raiton is category 4 in the game data', meter.categories.categoryOf(0x8DB), 4);
+check('Ten too', meter.categories.categoryOf(0x8D3), 4);
+check('but xivanalysis says Raiton rolls the GCD', meter.actions.isOnGcd(0x8DB), true);
+check('and so do the mudras', meter.actions.isOnGcd(0x8D3) && meter.actions.isOnGcd(0x8D5), true);
+// A Ninja's GCD is 2.12s at minimum skill speed (the 15% job haste). Six combos, each followed by
+// Ten (0.5s) - Chi (0.5s) - Raiton (1.5s), then Ten Chi Jin: three 1.0s / 1.0s / 1.5s Ninjutsu.
+let ninT = 0;
+let ninPresses = 0;
+const press = (s, action) => { meter.feed(hit(s, NIN, action)); ninPresses++; };
+for (let cycle = 0; cycle < 6; cycle++) {
+	press(ninT, SPINNING_EDGE); ninT += 2.12;
+	press(ninT, GUST_SLASH); ninT += 2.12;
+	press(ninT, AEOLIAN_EDGE); ninT += 2.12;
+	press(ninT, TEN); ninT += 0.5;
+	press(ninT, CHI); ninT += 0.5;
+	press(ninT, RAITON); ninT += 1.5;
+}
+press(ninT, FUMA_TCJ); ninT += 1.0;
+press(ninT, RAITON_TCJ); ninT += 1.0;
+press(ninT, SUITON_TCJ); ninT += 1.5;
+press(ninT, SPINNING_EDGE);
+st = meter.statsFor(NIN.name);
+check('every press counted, mudras and Ninjutsu included', st.count, ninPresses);
+// Within one 45ms batch: an exact synthetic cadence reads the batch midpoint (see test-gcd-tracker 12b).
+check('recast 2.12s (job haste absorbed by the estimate)', st.recast, 2.12, 0.03);
+check('nothing lost across the Ninjutsu', st.clip, 0, 0.01);
+check('uptime 100%', st.uptime * 100, 100, 0.1);
+check('nothing counted as unknown', meter.state.unknownActions, 0);
+
 // ---------------------------------------------------------------- unknown actions
 
 section('an action the snapshot never heard of');
