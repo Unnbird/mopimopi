@@ -45,10 +45,20 @@ function addOption() {
     // Columns added after the user's settings were last saved (rDPS, GCD uptime, ...) are absent
     // from their stored ColData. The settings list dereferences init.ColData[key][flag] to read
     // the checkbox state, so a missing key throws and takes the whole settings page down.
-    for (var i in Mopi2.ColData) {
-        if (init.ColData[i] == undefined)
-            init.ColData[i] = Mopi2.ColData[i]
+    //
+    // Rebuilt in the defaults' key order rather than filled in place: the width / padding / align
+    // / title pages list columns in ColData's own order, so a column added later would sit at the
+    // end of those lists instead of beside the family it belongs to. Stored entries are carried
+    // over as they are - every width, header and alignment the user set stays - and anything only
+    // their copy has keeps its place at the end.
+    var orderedColData = {};
+    for (var i in Mopi2.ColData)
+        orderedColData[i] = init.ColData[i] == undefined ? Mopi2.ColData[i] : init.ColData[i]
+    for (var i in init.ColData) {
+        if (orderedColData[i] == undefined)
+            orderedColData[i] = init.ColData[i]
     }
+    init.ColData = orderedColData;
     SubOption()
 }
 function putValue(arr, c) {

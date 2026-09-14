@@ -300,6 +300,15 @@ Mopi2 = {
             DPS: 1,
             HPS: 0
         },
+        damagePct: {
+            tt: "D%",
+            width: 40,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 1,
+            HPS: 0
+        },
         rdps: {
             tt: "rDPS",
             width: 50,
@@ -345,6 +354,15 @@ Mopi2 = {
             DPS: 0,
             HPS: 0
         },
+        rdpsDelta: {
+            tt: "±Buff",
+            width: 50,
+            padding: 0,
+            alignHeader: "center",
+            alignBody: "center",
+            DPS: 0,
+            HPS: 0
+        },
         gcdUptime: {
             tt: "GCD%",
             width: 45,
@@ -375,15 +393,6 @@ Mopi2 = {
         gcdRecast: {
             tt: "GCD",
             width: 40,
-            padding: 0,
-            alignHeader: "center",
-            alignBody: "center",
-            DPS: 0,
-            HPS: 0
-        },
-        rdpsDelta: {
-            tt: "±Buff",
-            width: 50,
             padding: 0,
             alignHeader: "center",
             alignBody: "center",
@@ -424,15 +433,6 @@ Mopi2 = {
             alignHeader: "center",
             alignBody: "center",
             DPS: 0,
-            HPS: 0
-        },
-        damagePct: {
-            tt: "D%",
-            width: 40,
-            padding: 0,
-            alignHeader: "center",
-            alignBody: "center",
-            DPS: 1,
             HPS: 0
         },
         mergedDamage: {
