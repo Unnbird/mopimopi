@@ -199,6 +199,12 @@ check('matched rows take the fight duration too', [c['Viper A'].DURATION, c['YOU
 check('duration formatted mm:ss', enc.duration, '08:35');
 check('damage = every FFLogs row, Limit Break included', enc.damage, String(16803305 + 1500000 + 5538352 + 999999));
 check('healed = FFLogs healing incl. overheal', enc.healed, '3900000');
+// The raid's rDPS total, the denominator Person.rdpsPct divides into: every row's
+// (amount - taken + given), Limit Break included, so the column's shares add up to 100%.
+const rdpsTotal = (16803305 - 1806745) + (1500000 - 75000 + 120000) + 999999 + (5538352 - 106862 + 985383);
+check('fflogsRdps = every row rebalanced by its buff traffic', enc.fflogsRdps, String(rdpsTotal));
+check('and stays within a few % of the damage total', Math.abs(Number(enc.fflogsRdps) / Number(enc.damage) - 1) < 0.05, true);
+check('a row FFLogs does not know counts at its ACT damage', stranger.Encounter.fflogsRdps, String(rdpsTotal + 4242));
 check('ENCDPS = damage / fight seconds', enc.ENCDPS, String(Math.round((16803305 + 1500000 + 5538352 + 999999) / 515.2)));
 check('lowercase encdps kept in step', enc.encdps, enc.ENCDPS);
 check('title untouched', enc.title, 'Recollection');

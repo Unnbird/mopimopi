@@ -10,8 +10,10 @@
 ## 安裝
 
 1. **懸浮窗**：OverlayPlugin → 新增懸浮窗 → 選 MiniParse 類型，網址填 `https://unnbird.github.io/mopimopi/`（若曾裝過 OverlayPluginAddon，它註冊的 preset **MopiMopiCustom** 指向同一個網址，直接選也可以）。
-2. **GCD 欄位**：設定 → 數據 → 格式 把 `GCD%` / `GCDs` / `Lost` / `GCD` 勾起來。不用裝任何外掛，也沒有開關：頁面一律計算。
+2. **GCD 欄位**：`GCD%` 預設就開著；`GCDs` / `Lost` / `GCD` 要看的話到設定 → 數據 → 格式勾起來。不用裝任何外掛，也沒有開關：頁面一律計算。
 3. **rDPS 等 FFLogs 數值**：設定 → 數據 → 一般 → 「優先使用 FFLogs 解析器數據」預設開啟，不用動；標題列會顯示 `FFLogs` 或 `ACT` 說明此刻顯示的是哪一邊。
+
+預設欄位是 `職業` / `名字` / `DPS` / `rDPS` / `D%` / `GCD%` / `傷害` / `揮擊數` / `直擊%` / `爆擊%` / `爆直%` / `最大傷害` / `死亡`。其餘（`rD%`、`aDPS`、`nDPS`、`cDPS`、`±Buff`、`GCDs`、`Lost`、`GCD`⋯）在設定 → 數據 → 格式裡自己勾。**改過設定的人不會被改動**：欄位順序存在 localStorage，新的預設只對第一次開的人生效。
 
 ## 介面欄位與來源
 
@@ -19,6 +21,7 @@
 |---|---|---|
 | DPS、傷害、傷害%、命中數、爆擊/直擊/爆直（數與 %）、最大傷害（含技能名）、死亡、標題列時間、全隊 DPS | 內建 FFLogs 解析器（對得上這場時）；否則 ACT。對上時所有每秒數值的分母是 **fight 時長減 downtime**（見〈兩個時鐘〉） | 無 |
 | **rDPS / aDPS / nDPS / cDPS / ±Buff** | 內建 FFLogs 解析器，且只有它：`apply.js` 把每人的 `amount / amountTaken / singleTargetAmountTaken / amountGiven` 寫進該列，`Person.recalculate()` 用 `amount − amountTaken + amountGiven` 等四式除以時長。解析器沒接上（標題列顯示 `ACT`）時這幾欄是 0 | 無 |
+| **rD%（rDPS 佔比）** | 同上：`apply.js` 另外把全隊的 `Σ(amount − amountTaken + amountGiven)` 寫進 encounter 的 `fflogsRdps`，`Person.recalculate()` 拿自己那份去除。分母跟 `D%` 算的是同一張表（解析器不認得的列一律用 ACT 傷害計入），所以兩欄可以直接對照：團輔結算後自己的佔比是升是降 | 無 |
 | 治療、HPS、溢療、治療數、爆擊治療、最大治療 | ACT。這版解析器的 meters 對玩家不記治療（見〈限制〉），只有 HPS 改用 fight 時長去除 | 無 |
 | **GCD%（運轉率）、GCDs（次數）、Lost（空窗秒數）、GCD（推估 recast）** | 頁面內建 `js/gcd/`：`meter.js` 吃 20/21/22/23 行記 GCD、26/30 行記加速狀態，`apply.js` 把 `gcdUptime / gcdCount / gcdClip / gcdOccupied / gcdRecast` 寫進該列。王打不到的時段由解析器提供並從分子分母兩邊扣掉。`GCD%` 是每次按出 GCD 時量好的百分比，原樣顯示、不再除 | 無 |
 | 揮擊數、miss、命中率、承受傷害/治療、盾、Last 10/30/60/180 DPS | ACT | 無 |

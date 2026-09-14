@@ -53,7 +53,10 @@ const healRate = (total) => Math.round(total / healDuration * 100) / 100;
 const combatData = {
 	// Two clocks, as js/fflogs/apply.js writes them: DURATION is the fight without its downtime
 	// and divides every damage column, HEALDURATION is the whole fight and divides the healing.
-	Encounter: { title: 'M4S', duration: '10:00', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '19568640', healed: '2048000', ENCDPS: '38220' },
+	// fflogsRdps is the raid's rDPS total apply.js writes beside the damage total: every parsed
+	// row's (amount - taken + given), plus ACT's damage for the rows FFLogs never matched -
+	// here the legacy one. rdpsPct is a share of it.
+	Encounter: { title: 'M4S', duration: '10:00', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '19568640', fflogsRdps: String(9434064 + 9784320), healed: '2048000', ENCDPS: '38220' },
 	Combatant: {
 		'Fflogs Player': {
 			name: 'Fflogs Player', Job: 'RPR', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '9784320', hits: '400', swings: '400', misses: '0',
@@ -94,6 +97,18 @@ check('cdps = (amount - single + given) / DURATION', fflogs.cdps, rate(9784320 +
 check('rdpsDelta = rdps - own damage rate', fflogs.rdpsDelta, rate(625616 - 975872));
 check('encdps for comparison', fflogs.encdps, rate(9784320));
 check('the four FFLogs totals parse as numbers', fflogs.fflogsAmountGiven, 625616);
+
+console.log('\n=============== rDPS% is a share of the raid total, not of a duration ===============');
+check('rdpsPct = own rDPS / the raid rDPS total', fflogs.rdpsPct, Math.round(9434064 / (9434064 + 9784320) * 10000) / 100);
+check('a row with no FFLogs totals has no rdpsPct', legacy.rdpsPct, undefined);
+// The per-row totals without the encounter one - an older apply.js, or a message that predates
+// it - must leave the column out rather than divide by nothing.
+const noTotal = new sandbox.Combatant({
+	detail: Object.assign({}, combatData, { Encounter: Object.assign({}, combatData.Encounter, { fflogsRdps: '0' }) }),
+}, 'encdps');
+noTotal.AttachPets();
+check('no raid total: rdps still derived', noTotal.Combatant['Fflogs Player'].rdps, rate(9784320 - 975872 + 625616));
+check('no raid total: no rdpsPct', noTotal.Combatant['Fflogs Player'].rdpsPct, undefined);
 
 console.log('\n=============== damage and healing divide by different clocks ===============');
 // FFLogs takes downtime off the damage clock only. Dividing healing by the same shortened clock

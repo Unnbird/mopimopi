@@ -275,6 +275,13 @@
     for (const r of snapshot.damageRows || []) fflogsDamage += num(r.amount);
     let fflogsHealed = 0;
     for (const r of snapshot.healingRows || []) fflogsHealed += num(r.amount) + num(r.over);
+    // The same total for rDPS: every row's (amount - taken + given), which is the numerator
+    // Person.recalculate() divides into rdps. Person.rdpsPct reads it back as this row's share of
+    // it. Rows FFLogs does not know are counted at their ACT damage, exactly as they are in the
+    // damage total above, so rDPS% and D% are shares of the same table and can be read side by
+    // side. Across the raid what one player took another gave, so the two totals stay close.
+    let fflogsRdps = 0;
+    for (const r of snapshot.damageRows || []) fflogsRdps += num(r.amount) - num(r.amountTaken) + num(r.amountGiven);
 
     const divisor = clocks.active > 0 ? clocks.active : 1;
     const healDivisor = seconds > 0 ? seconds : 1;
@@ -286,6 +293,7 @@
     // only the per-second figures leave downtime out.
     out.Encounter.duration = formatDuration(seconds);
     out.Encounter.damage = whole(encDamage);
+    out.Encounter.fflogsRdps = whole(fflogsRdps + actDamageUnmatched);
     out.Encounter.ENCDPS = whole(encDamage / divisor);
     if ('encdps' in out.Encounter) out.Encounter.encdps = out.Encounter.ENCDPS;
     if ('DPS' in out.Encounter) out.Encounter.DPS = out.Encounter.ENCDPS;

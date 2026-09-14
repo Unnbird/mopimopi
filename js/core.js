@@ -713,6 +713,15 @@ Person.prototype.recalculate = function () {
         this.ndps = pFloat((fAmount - fTaken) / this.parent.DURATION);
         this.cdps = pFloat((fAmount - fSingle + fGiven) / this.parent.DURATION);
         this.rdpsDelta = pFloat((fAmount - fTaken + fGiven - this.mergedDamage) / this.parent.DURATION);
+        // rDPS% is damagePct's counterpart: this row's share of the raid's rDPS, which is the
+        // share the fight is credited with once raid buffs have been handed back to whoever cast
+        // them. The total comes from js/fflogs/apply.js, over the same table damagePct divides by,
+        // so the two columns can be read against each other. Without it - the parser wrote the
+        // per-row totals but this message predates the encounter one - the column stays out
+        // rather than showing a share of nothing.
+        var fRdpsTotal = this.parent.Encounter ? this.parent.Encounter.fflogsRdps : 0;
+        if (fRdpsTotal > 0)
+            this.rdpsPct = pFloat((fAmount - fTaken + fGiven) / fRdpsTotal * 100);
     }
     // gcdUptime is the deliberate exception to the paragraph above: it arrives already divided and
     // is shown as it came. js/gcd/meter.js measures it once per GCD, at the press, when the interval

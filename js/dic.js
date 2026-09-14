@@ -834,6 +834,20 @@ d = {
         e: "li_2line_checkbox",
         ul: 0
     },
+    rdpsPct: {
+        tt: "rD%",
+        m: {
+            KR: "레이드 버프를 정산한 뒤, 팀 전체 rDPS 중 내 몫",
+            JP: "レイドバフを精算した後、パーティ全体のrDPSに占める割合",
+            EN: "This player's share of the party's total rDPS - the damage share left once raid buff contributions have been handed back to whoever cast them.<br><span class='ac'> = Read against D%</span>",
+            FR: "Part de ce joueur dans le rDPS total du groupe, une fois les buffs de raid redistribués à leurs lanceurs.<br><span class='ac'> = À comparer au D%</span>",
+            DE: "Anteil dieses Spielers am Gesamt-rDPS der Gruppe, nachdem Raid-Buffs ihren Urhebern zugerechnet wurden.<br><span class='ac'> = Im Vergleich zu D%</span>",
+            CN: "结算团辅后，在全队 rDPS 中自己的占比<br><span class='ac'> = 可与 D% 对照</span>",
+            TW: "結算團輔後，在全隊 rDPS 中自己的佔比<br><span class='ac'> = 可與 D% 對照</span>",
+        },
+        e: "li_2line_checkbox",
+        ul: 0
+    },
     adps: {
         tt: "aDPS",
         m: {
