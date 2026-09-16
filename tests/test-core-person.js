@@ -258,57 +258,132 @@ check('rdps is still shown', actOnly.Combatant['Fflogs Player'].rdps, 19241.5);
 sandbox.init.q.fflogs = 1;
 
 section('solo: rDPS is just DPS when there is nobody to give or take buffs');
-// The bug this guards: rDPS is divided in the plugin, against the exact length of the fight, while
-// every other per-second column is divided here, against the column the plugin sent. Rounding that
-// column to whole seconds put the two sides on different divisors - 30.4s against 30s - and a solo
-// pull, where the two columns are by definition the same number, showed them 1-2% apart.
+// The bug this guards: rDPS is divided in the plugin, against the exact length of the fight. Every
+// per-second column that was divided anywhere else ended up on a different divisor, and a solo
+// pull - where the two columns are by definition the same number - showed them apart. First it was
+// whole seconds against 30.4; then, once the plugin exported milliseconds, it was 30.456 against
+// the 30.45 this page's two-decimal parse left of it. So the plugin divides DPS too, and the clock
+// it divided by arrives here unrounded for the columns that still do their own arithmetic.
 const soloDamage = 4823917;
-const soloSeconds = 30.4;
-const solo = new sandbox.Combatant({
+const soloSeconds = 30.456;                       // what Clock()'s "0.###" actually sends
+const soloRate = Math.round(soloDamage / soloSeconds * 100) / 100;   // what Rate()'s "0.##" sends
+const soloRow = {
+	name: 'Solo Player', Job: 'SAM',
+	DURATION: '30', damage: String(soloDamage), hits: '90', swings: '90', misses: '0',
+	crithits: '20', DirectHitCount: '18', CritDirectHitCount: '5', maxhit: 'Midare-120000', MAXHIT: '120000',
+	healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+	damagetaken: '0', healstaken: '0',
+	fflogsDuration: String(soloSeconds), fflogsHealDuration: String(soloSeconds),
+	fflogsDamage: String(soloDamage), fflogsHits: '90', fflogsCrithits: '20',
+	fflogsDirectHitCount: '18', fflogsCritDirectHitCount: '5',
+	fflogsMaxhit: 'Midare Setsugekka-120000', fflogsMAXHIT: '120000',
+	fflogsHealed: '0', fflogsOverHeal: '0', fflogsHeals: '0', fflogsCritheals: '0',
+	fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
+	// Divided in the plugin, like the four below it.
+	fflogsDps: String(soloRate), fflogsHps: '0',
+	// Nobody to take from and nobody to give to, so all four are the same figure.
+	rdps: String(soloRate), adps: String(soloRate), ndps: String(soloRate), cdps: String(soloRate),
+	rdpsDelta: '0', rdpsPct: '100',
+	gcdUptime: '96.4', gcdCount: '12', gcdClip: '0.4', gcdRecast: '2.5',
+};
+const soloMessage = {
+	Encounter: {
+		title: 'Striking Dummy', duration: '00:30',
+		DURATION: '30', damage: String(soloDamage), healed: '0', ENCDPS: '160797',
+		fflogsDuration: String(soloSeconds), fflogsHealDuration: String(soloSeconds),
+		fflogsDamage: String(soloDamage), fflogsHealed: '0',
+		fflogsRdps: String(soloDamage), fflogsDowntime: '0',
+		fflogsApplied: '1', fflogsParserVersion: '3075',
+	},
+	Combatant: { 'Solo Player': soloRow },
+	isActive: 'true',
+};
+const solo = new sandbox.Combatant({ detail: soloMessage }, 'encdps');
+// process.js does this on every message before drawing; it is what fills the derived columns in.
+solo.AttachPets();
+const player = solo.Combatant['Solo Player'];
+check('the clock keeps its milliseconds', player.DURATION, soloSeconds);
+check('the encounter clock too', solo.DURATION, soloSeconds);
+check('DPS is the plugin\'s, shown as it came', player.encdps, soloRate);
+check('so rDPS and DPS agree exactly', player.encdps - player.rdps, 0);
+check('and so do the other three', player.adps + player.ndps + player.cdps, player.encdps * 3);
+check('nothing was given or taken', player.rdpsDelta, 0);
+
+// An addon from before fflogsDps existed. The page divides for itself again - and still lands on
+// the same figure, because the clock it divides by kept its milliseconds.
+const soloOld = JSON.parse(JSON.stringify(soloMessage));
+delete soloOld.Combatant['Solo Player'].fflogsDps;
+delete soloOld.Combatant['Solo Player'].fflogsHps;
+const older = new sandbox.Combatant({ detail: soloOld }, 'encdps');
+older.AttachPets();
+check('an older addon still agrees', older.Combatant['Solo Player'].encdps, soloRate);
+
+section('a pet FFLogs keeps apart: its rate reaches the owner and leaves again');
+// rDPS is the folded total on the owner's row. The DPS column only matches it while the pet's line
+// is merged in, and the pet's line carries a rate of its own for exactly that.
+const petSeconds = 61.125;
+const ownerDamage = 2000000, petDamage = 500000;
+const ownRate = Math.round(ownerDamage / petSeconds * 100) / 100;
+const petRate = Math.round(petDamage / petSeconds * 100) / 100;
+const foldedRate = Math.round((ownerDamage + petDamage) / petSeconds * 100) / 100;
+const blank = {
+	DURATION: '61', hits: '1', swings: '1', misses: '0', crithits: '0',
+	DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0',
+	healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0',
+	deaths: '0', damagetaken: '0', healstaken: '0',
+	fflogsDuration: String(petSeconds), fflogsHealDuration: String(petSeconds),
+	fflogsHits: '1', fflogsCrithits: '0', fflogsDirectHitCount: '0', fflogsCritDirectHitCount: '0',
+	fflogsMaxhit: '', fflogsMAXHIT: '0', fflogsHealed: '0', fflogsOverHeal: '0',
+	fflogsHeals: '0', fflogsCritheals: '0', fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
+	fflogsHps: '0', rdpsDelta: '0', gcdUptime: '0', gcdCount: '0', gcdClip: '0', gcdRecast: '2.5',
+};
+const withPet = new sandbox.Combatant({
 	detail: {
 		Encounter: {
-			title: 'Striking Dummy', duration: '00:30',
-			DURATION: '30', damage: String(soloDamage), healed: '0', ENCDPS: '160797',
-			fflogsDuration: String(soloSeconds), fflogsHealDuration: String(soloSeconds),
-			fflogsDamage: String(soloDamage), fflogsHealed: '0',
-			fflogsRdps: String(soloDamage), fflogsDowntime: '0',
+			title: 'Striking Dummy', duration: '01:01', DURATION: '61',
+			damage: String(ownerDamage + petDamage), healed: '0', ENCDPS: '1',
+			fflogsDuration: String(petSeconds), fflogsHealDuration: String(petSeconds),
+			fflogsDamage: String(ownerDamage + petDamage), fflogsHealed: '0',
+			fflogsRdps: String(ownerDamage + petDamage), fflogsDowntime: '0',
 			fflogsApplied: '1', fflogsParserVersion: '3075',
 		},
 		Combatant: {
-			'Solo Player': {
-				name: 'Solo Player', Job: 'SAM',
-				DURATION: '30', damage: String(soloDamage), hits: '90', swings: '90', misses: '0',
-				crithits: '20', DirectHitCount: '18', CritDirectHitCount: '5', maxhit: 'Midare-120000', MAXHIT: '120000',
-				healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
-				damagetaken: '0', healstaken: '0',
-				fflogsDuration: String(soloSeconds), fflogsHealDuration: String(soloSeconds),
-				fflogsDamage: String(soloDamage), fflogsHits: '90', fflogsCrithits: '20',
-				fflogsDirectHitCount: '18', fflogsCritDirectHitCount: '5',
-				fflogsMaxhit: 'Midare Setsugekka-120000', fflogsMAXHIT: '120000',
-				fflogsHealed: '0', fflogsOverHeal: '0', fflogsHeals: '0', fflogsCritheals: '0',
-				fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
-				// Nobody to take from and nobody to give to, so all four are the same figure, and
-				// the plugin divided every one of them by 30.4.
-				rdps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
-				adps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
-				ndps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
-				cdps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
-				rdpsDelta: '0', rdpsPct: '100',
-				gcdUptime: '96.4', gcdCount: '12', gcdClip: '0.4', gcdRecast: '2.5',
-			},
+			'Summoner S': Object.assign({}, blank, {
+				name: 'Summoner S', Job: 'SMN', damage: String(ownerDamage),
+				fflogsDamage: String(ownerDamage), fflogsDps: String(ownRate),
+				// The plugin folds the pet into the rDPS family and nowhere else.
+				rdps: String(foldedRate), adps: String(foldedRate),
+				ndps: String(foldedRate), cdps: String(foldedRate), rdpsPct: '100',
+			}),
+			'Demi-Bahamut (Summoner S)': Object.assign({}, blank, {
+				name: 'Demi-Bahamut (Summoner S)', Job: '', damage: String(petDamage),
+				fflogsDamage: String(petDamage), fflogsDps: String(petRate),
+				rdps: '0', adps: '0', ndps: '0', cdps: '0', rdpsPct: '0',
+			}),
 		},
 		isActive: 'true',
 	},
 }, 'encdps');
-// process.js does this on every message before drawing; it is what fills the derived columns in.
-solo.AttachPets();
-const player = solo.Combatant['Solo Player'];
-check('the clock keeps its fraction', player.DURATION, soloSeconds);
-check('the encounter clock too', solo.DURATION, soloSeconds);
-check('DPS divides by the same one', player.encdps, Math.round(soloDamage / soloSeconds * 100) / 100);
-check('so rDPS and DPS agree', player.rdps, player.encdps);
-check('and so do the other three', player.adps + player.ndps + player.cdps, player.encdps * 3);
-check('nothing was given or taken', player.rdpsDelta, 0);
+// process.js's order on every message: attach (or detach) first, then sort - sort() is what folds
+// a pet's line into its owner.
+withPet.AttachPets();
+withPet.resort('mergedDamage', 1);
+const smn = withPet.Combatant['Summoner S'];
+check('the owner\'s DPS is own plus pet', smn.encdps, foldedRate);
+check('which is what rDPS is a rate on', smn.encdps - smn.rdps, 0);
+withPet.DetachPets();
+withPet.resort('mergedDamage', 1);
+check('pets off takes the pet back out', smn.encdps, ownRate);
+check('and the pet keeps its own', withPet.Combatant['Demi-Bahamut (Summoner S)'].encdps, petRate);
+
+section('the plugin\'s rate follows the same setting every other column does');
+sandbox.init.q.fflogs = 0;
+const soloAct = new sandbox.Combatant({ detail: soloMessage }, 'encdps');
+soloAct.AttachPets();
+check('DPS is ACT\'s again', soloAct.Combatant['Solo Player'].encdps,
+	Math.round(soloDamage / 30 * 100) / 100);
+check('rDPS is not ACT\'s to have', soloAct.Combatant['Solo Player'].rdps, soloRate);
+sandbox.init.q.fflogs = 1;
 
 section('a message from a mopimopi with no addon');
 const bare = JSON.parse(JSON.stringify(combatData));

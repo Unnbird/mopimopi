@@ -408,15 +408,46 @@ var fflogsEncounterColumns = {
 }
 
 /**
+ * Whether the table is showing the plugin's figures at all.
+ *
+ * The settings switch is a display choice, not a parser switch: with it off the table shows ACT's
+ * own figures even though the addon is still working the others out. The rDPS family stays either
+ * way, because ACT has nothing of its own to show in those columns.
+ */
+function usingFflogs() {
+    return !(typeof init !== 'undefined' && init && init.q && init.q.fflogs == 0);
+}
+
+/**
+ * Columns that must reach Person / Combatant unrounded.
+ *
+ * Everything else on a row is a figure somebody reads, and two decimals is more than anyone reads.
+ * The clocks are not read, they are divided by: the plugin exports them to the millisecond on
+ * purpose, having divided the rDPS family by exactly that, so rounding them here puts the two sides
+ * back on different divisors - which on a solo pull is the whole difference between a DPS column
+ * and an rDPS column that are, with nobody there to give or take a buff, the same number. The two
+ * rates ride along so that whatever precision the plugin sends is the precision that is shown.
+ */
+var fflogsExactColumns = ["DURATION", "HEALDURATION", "fflogsDps", "fflogsHps"];
+
+function keepFflogsPrecision(target, row) {
+    for (var i = 0; i < fflogsExactColumns.length; i++) {
+        var key = fflogsExactColumns[i];
+        if (!row || !(key in row)) continue;
+        // An empty string is FFLogs saying it has no such row; leave the 0 the parse above left.
+        var exact = parseFloat(String(row[key]).replace(/[,%]+/ig, ""));
+        if (!isNaN(exact)) target[key] = exact;
+    }
+}
+
+/**
  * A copy of one CombatData row with the addon's figures moved over ACT's, leaving the originals
  * behind. The message itself is not touched: it is dispatched on as onOverlayDataUpdate for anyone
  * else listening, and it should reach them as it arrived.
  */
 function preferFflogs(row, columns) {
     if (!row || typeof row != "object") return row;
-    // The settings switch is a display choice, not a parser switch: with it off the table shows
-    // ACT's own figures even though the addon is still working the others out.
-    if (typeof init !== 'undefined' && init && init.q && init.q.fflogs == 0) return row;
+    if (!usingFflogs()) return row;
 
     var out = null;
     for (var key in columns) {
@@ -458,6 +489,15 @@ function Person(e, p) {
                 this[i] = parseInt(tmp).nanFix()
         }
     }
+    keepFflogsPrecision(this, e);
+    // Damage and healing per second as the plugin divided them, against the same clock it divided
+    // the rDPS family by. Shown as they came - this page does not divide them again. A row FFLogs
+    // has nothing for sends an empty string and lands on 0, like every other column of its; a
+    // mopimopi talking to an older addon, or to no addon, has neither key and keeps dividing for
+    // itself below.
+    this.fflogsRate = usingFflogs() && ("fflogsDps" in e);
+    if (this.fflogsDps == undefined) this.fflogsDps = 0;
+    if (this.fflogsHps == undefined) this.fflogsHps = 0;
     if (this.DURATION <= 0) {
         this.dps = parseFloat((this.damage / this.parent.DURATION).nanFix().toFixed(underDot));
         this.hps = parseFloat((this.healed / this.parent.DURATION).nanFix().toFixed(underDot));
@@ -677,6 +717,12 @@ function Person(e, p) {
         Last30DPS: this.Last30DPS,
         Last60DPS: this.Last60DPS,
         Last180DPS: this.Last180DPS,
+        // Rates rather than amounts, and they still belong here: every row on this table was
+        // divided by the same clock, so they add the way the amounts behind them do. This is how a
+        // pet FFLogs kept as a row of its own gets its share into the owner's DPS column, and why
+        // turning pets off takes it back out again.
+        FflogsDps: this.fflogsDps,
+        FflogsHps: this.fflogsHps,
     };
     try {
         var regex = /(?:.*?)\((.*?)\)/im;
@@ -736,10 +782,23 @@ Person.prototype.recalculate = function () {
     var hdur = this.HEALDURATION || dur;
     var encdur = this.parent.DURATION;
     var enchdur = (this.parent.Encounter && this.parent.Encounter.HEALDURATION) || encdur;
-    this.dps = pFloat(this.mergedDamage / dur);
-    this.encdps = pFloat(this.mergedDamage / encdur);
-    this.hps = pFloat(this.mergedHealed / hdur);
-    this.enchps = pFloat(this.mergedHealed / enchdur);
+    if (this.fflogsRate) {
+        // Already divided, in the plugin, against the exact fight clock - the same one the rDPS
+        // family was divided by. That is the point of doing it there: on a solo pull, where the two
+        // are one number by definition, they now arrive as one number instead of as one number
+        // divided twice, by a clock that lost its milliseconds on the way through a string.
+        //
+        // There is one clock for damage and one for healing, so dps and encdps are the same figure
+        // here, as are hps and enchps. The pets' rates were merged in above, which leaves the
+        // owner's row carrying the folded rate rDPS is a rate on.
+        this.dps = this.encdps = pFloat(this.mergedFflogsDps);
+        this.hps = this.enchps = pFloat(this.mergedFflogsHps);
+    } else {
+        this.dps = pFloat(this.mergedDamage / dur);
+        this.encdps = pFloat(this.mergedDamage / encdur);
+        this.hps = pFloat(this.mergedHealed / hdur);
+        this.enchps = pFloat(this.mergedHealed / enchdur);
+    }
     this["DAMAGE-k"] = Math.floor(this.mergedDamage / 1000);
     this["DAMAGE-m"] = Math.floor(this.mergedDamage / 1000000);
     this.DPS = Math.floor(this.dps);
@@ -803,6 +862,7 @@ function Combatant(e, sortkey) {
             else this.Encounter[i] = parseInt(tmp).nanFix()
         }
     }
+    keepFflogsPrecision(this.Encounter, encounter);
     for (var i in e.detail.Combatant) {
         this.Combatant[i] = new Person(e.detail.Combatant[i], this)
     }

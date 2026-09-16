@@ -22,7 +22,8 @@
 |---|---|
 | **rDPS / aDPS / nDPS / cDPS / ±Buff / rD%** | 外掛，而且只有外掛。它跑 FFLogs 自己的解析器，算完直接送過來 —— 頁面原樣顯示，不再除以任何東西。沒有外掛時這幾欄是 0 |
 | **GCD% / GCDs / Lost / GCD** | 外掛。同樣是算好的值，原樣顯示 |
-| DPS、傷害、傷害%、命中數、爆擊/直擊/爆直、最大傷害（含技能名）、死亡、全隊 DPS／HPS | **一律外掛的**。FFLogs 對這一列沒有數字，就顯示沒有，不會退回 ACT 的。標題列會顯示 `FFLogs` 或 `ACT` 說明這一場有沒有對上 |
+| **DPS / HPS** | 外掛，而且也是**在那邊除好的**（`fflogsDps` / `fflogsHps`），跟 rDPS 家族同一個時鐘。寵物併進主人時是把各列的值加起來 —— 同一場的每一列都除以同一個數，所以率可以像量一樣相加。舊版外掛沒送這兩個 key 時，退回這裡自己除 |
+| 傷害、傷害%、命中數、爆擊/直擊/爆直、最大傷害（含技能名）、死亡、全隊 DPS／HPS | **一律外掛的**。FFLogs 對這一列沒有數字，就顯示沒有，不會退回 ACT 的。標題列會顯示 `FFLogs` 或 `ACT` 說明這一場有沒有對上 |
 | 治療、HPS、溢療、治療數、爆擊治療、最大治療 | 同上。不過這版 FFLogs 解析器對玩家不記治療，所以這幾欄實務上是 0 |
 | 揮擊數、miss、命中率、承受傷害/治療、盾、Last 10/30/60/180 DPS、標題列時間 | ACT |
 
@@ -50,13 +51,15 @@ ACT 的 export variable **只能新增欄位、不能覆蓋**。`damage`、`heal
 
 唯一不會被蓋掉的是**外掛根本沒送的欄位**：沒裝外掛時這些 key 一個都不存在，什麼都不會被複製，頁面就是原本的 mopimopi。
 
-rDPS 家族不在這個機制裡：ACT 沒有叫 `rdps` 的欄位，外掛直接用這個名字送過來。
+rDPS 家族不在這個機制裡：ACT 沒有叫 `rdps` 的欄位，外掛直接用這個名字送過來。`fflogsDps` / `fflogsHps` 則是在這個機制裡的 —— 設定關掉時 DPS 欄位就回到 ACT 自己那個數字，rDPS 家族不受影響。這也是**唯一**會讓 DPS 跟 rDPS 在單人時對不上的情況，而且那是刻意的：那一刻表格講的是 ACT 的量法。
 
 ### 兩個時鐘
 
-FFLogs 的傷害除以「戰鬥時長 − downtime」，治療除以整場。外掛把兩個時鐘分別送成 `fflogsDuration` 與 `fflogsHealDuration`，`preferFflogs()` 放進 `DURATION` 與 `HEALDURATION`，`Person.recalculate()` 各自取用。沒有外掛時沒有 `HEALDURATION`，兩者都退回 ACT 原本那一個時長。
+FFLogs 的傷害除以「戰鬥時長 − downtime」，治療除以整場。外掛把兩個時鐘分別送成 `fflogsDuration` 與 `fflogsHealDuration`，`preferFflogs()` 放進 `DURATION` 與 `HEALDURATION`。沒有外掛時沒有 `HEALDURATION`，兩者都退回 ACT 原本那一個時長。
 
-這兩個值**帶小數**，這件事有意義：rDPS 家族是外掛那邊除好的，用的是精確秒數，而 DPS 是這裡用同一個欄位除的。兩邊除數只要不一致，單人時 rDPS 和 DPS 就會對不上 —— 而單人時它們照定義是同一個數字。
+**每秒的欄位現在不在這裡除了。** 單人時 rDPS 照定義就等於 DPS（沒人給你團輔、你也沒給別人），而只要這兩欄不是同一個地方除出來的，它們就會差一點：先是時鐘被捨成整數，一個除 30.4、一個除 30；外掛改送帶小數的秒數之後，換成這裡的通用解析把 30.456 讀成 30.45。所以 DPS/HPS 跟 rDPS 家族一樣由外掛除好送來，`Person.recalculate()` 原樣採用。
+
+時鐘還是照用：舊版外掛沒送 `fflogsDps` 時這裡仍然自己除，所以 `keepFflogsPrecision()` 讓這兩個值**繞過那道兩位小數的解析**，保住毫秒。
 
 為什麼是兩個時鐘、downtime 又是怎麼算的，見 [OverlayPluginAddon 的 README](https://github.com/Unnbird/OverlayPluginAddon#兩個時鐘)。
 
@@ -82,7 +85,7 @@ FFLogs 的傷害除以「戰鬥時長 − downtime」，治療除以整場。外
 
 | 檔案 | 用途 |
 |---|---|
-| `js/core.js` | `onBroadcastMessage` 的接點、`preferFflogs()`、`Person` / `Combatant` |
+| `js/core.js` | `onBroadcastMessage` 的接點、`preferFflogs()` / `keepFflogsPrecision()`、`Person` / `Combatant` |
 | `js/process.js` | 欄位格式化與表格繪製 |
 | `js/ui.js` | 設定畫面 |
 | `js/init.js` + `dic.js` + `lang.js` | 預設值、字串、設定樹 |
@@ -94,5 +97,7 @@ node tests/test-core-person.js
 ```
 
 把 `js/core.js` 放進 Node vm 跑真正的 `Person` / `Combatant`，檢查這個頁面現在唯一還在做的判斷：每一列在 ACT 的數字與外掛的數字之間挑哪一個。涵蓋兩個時鐘、空字串與 0 的差別（寵物那條）、rDPS 家族與 GCD 欄位原樣通過不被再除、FFLogs 不認得的列保留 ACT 的數字、設定關掉時整張表回到 ACT、以及沒有外掛的訊息長什麼樣。
+
+**單人那一段是這裡的主測試**：同一場用外掛實際會送的毫秒時鐘（`30.456`，不是好整除的 `30.4`），確認 DPS 與 rDPS 一模一樣 —— 送 `fflogsDps` 的新版外掛如此，沒送的舊版靠保住毫秒的時鐘自己除也如此。緊接著的寵物那一段確認寵物列的率加進主人之後，正好是 rDPS 量的那個折疊總量，關掉寵物又會退回主人自己那一份。
 
 計算本身的測試在外掛那邊（`Test-Gcd.ps1` / `Test-Downtime.ps1` / `Test-Fflogs.ps1`，以及拿真實 log 對帳的 `Replay-Log.ps1`）。
