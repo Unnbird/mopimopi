@@ -1,0 +1,79 @@
+# Publishes more than one branch as one GitHub Pages site.
+#
+# A repository only gets one Pages site, and the branch-and-folder setting only points at one
+# branch. Deploying from Actions instead means we decide what the site contains, so each branch
+# gets a folder of its own:
+#
+#     https://unnbird.github.io/mopimopi/        master
+#     https://unnbird.github.io/mopimopi/v2/     v2
+#
+# Adding a branch is one line in "Lay the branches out" below.
+#
+# Two things this depends on:
+#
+#   - Settings -> Pages -> Source must be "GitHub Actions". With the old branch setting still
+#     selected the deploy job fails.
+#   - This file has to exist on every branch listed below. A push builds the workflow from the
+#     branch that was pushed, so a copy that lives only on v2 never runs when master moves.
+#
+# Everything the page loads is referenced relatively (js/..., css/...), which is what lets a branch
+# sit in a subfolder at all. Keep it that way: one leading slash and the copy under /v2/ starts
+# loading the copy at the root.
+name: Pages
+
+on:
+  push:
+    branches: [master, v2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A push to the other branch while one is in flight supersedes it, and
+# the site it builds is whole either way - every branch is read from origin, not from the push.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Every branch and tag, because this publishes branches other than the one pushed.
+          fetch-depth: 0
+
+      - name: Lay the branches out
+        run: |
+          set -euo pipefail
+          publish() {
+            local branch="$1" dest="site/${2-}"
+            mkdir -p "$dest"
+            # git archive rather than a copy: it writes the branch's tracked files and nothing
+            # else, so no .git ever reaches the site.
+            git archive "origin/$branch" | tar -x -C "$dest"
+            rm -rf "$dest/.github" "$dest/tests"
+          }
+
+          publish master
+          publish v2 v2
+
+          echo "published:"
+          find site -maxdepth 2 -name index.html -printf '  %p\n'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
