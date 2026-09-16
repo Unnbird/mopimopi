@@ -215,6 +215,7 @@ lastCombatRaw.gcd           // 最近一次 CombatData 有沒有寫入、寫了�
 
 ```
 node tests/test-fflogs-overlay.js
+node tests/test-fflogs-downtime.js
 node tests/test-core-person.js
 node tests/test-gcd-tracker.js
 node tests/test-gcd-meter.js
@@ -223,6 +224,7 @@ node tests/test-gcd-columns.js
 ```
 
 - `test-fflogs-overlay.js`：假 CombatData + 假 fight 過一遍覆蓋邏輯（每個欄位、`YOU` 對應本機玩家真名、寵物三種情形、Limit Break、不對場保留原樣、沒有治療表時保留 ACT 治療、時長格式）。
+- `test-fflogs-downtime.js`：用假的 `window.LogParser` 驅動 `js/fflogs/meter.js` 的 `downtimeWindows()`，把 parser 每種 zone handler 記錄 downtime 的欄位形狀各測一遍（`downtimeTracker`、`downtimePeriods` + `downtimeStart`、`downtimeStart`/`downtimeEnd`、絕歐米茄一段一對的 `p*Downtime`），並把視窗總長對回 parser 自己的 `downtimeForRange`——GCD 欄位扣掉的 downtime 必須和 DPS 欄位扣掉的是同一段。
 - `test-core-person.js`：把 `js/core.js` 放進 Node vm 跑真正的 `Person`，確認 rDPS 四欄只從 FFLogs 的四個總量算出、舊 RdpsOverlay 的匝出欄位被忽略、GCD 欄位原樣通過不被再除。
 - `test-gcd-tracker.js`：OverlayPluginAddon `Test-Gcd.ps1` 的全部情境逐字搬過來（乾淨輪轉、技速推估、舞步與忍術的固定 recast、忍者 2.12 秒輪替中的結印與忍術、加速窗口、靈感只作用於指定技能、長詠唱與詠唱稅、真實空窗、AoE 去重、瞬發 vs 硬詠唱、連續魔法的交替輪替、硬詠唱開始不會讓運轉率飆高、一次 GCD 只量一次、時間戳抖動、150ms 損失 slack、運轉率不超過 100%、樣本不足退回預設），加上詠唱中斷回捲與換場截斷。改動 `js/gcd/tracker.js` / `action-data.js` / `actions-data.js` 後都該重跑。
 - `test-gcd-meter.js`：用合成的網路 log 行餵 `meter.js`：誰是玩家、oGCD 與自動攻擊不算、詠唱條與落地配對去重、詠唱中斷、過期詠唱條、加速狀態、忍者的結印與忍術雖是分類 4 仍算 GCD、快照沒有的技能、`YOU` 對應（含 02 行）、CombatData 判斷換場、缺資料表時的行為、壞行不會拋錯。

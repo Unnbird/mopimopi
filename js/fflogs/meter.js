@@ -188,6 +188,25 @@
   }
 
   /**
+   * The start/end field pairs the hand-written zone handlers keep their downtime in, in the
+   * parser's own spelling (see each handler's totalDowntimeForFightRange in parser-ff.js).
+   * downtimeStart/downtimeEnd is P12S, M4S and Queen Eternal; the first/second pair is M5S; the
+   * rest are the Omega Protocol's phase transitions, which it names one by one.
+   */
+  const DOWNTIME_PAIRS = [
+    ['downtimeStart', 'downtimeEnd'],
+    ['firstDowntimeStart', 'firstDowntimeEnd'],
+    ['secondDowntimeStart', 'secondDowntimeEnd'],
+    ['p2DowntimeStart', 'p2DowntimeEnd'],
+    ['p3TransitionStart', 'p3TransitionEnd'],
+    ['p4BlueScreenCast', 'p5OmegaMTargetable'],
+    ['p5DeltaDynamisStart', 'p5DeltaDynamisEnd'],
+    ['p5SigmaDynamisStart', 'p5SigmaDynamisEnd'],
+    ['p5OmegaDynamisStart', 'p5OmegaDynamisEnd'],
+    ['blindFaithCast', 'targetableAfterBlindFaith'],
+  ];
+
+  /**
    * The stretches of this fight when nothing could be hit, in log time, as the parser's zone
    * handler has them right now - the open one included, running to the latest line parsed.
    *
@@ -196,9 +215,17 @@
    * NameToggle lines and the overkill that ends P1). js/gcd/meter.js needs the windows rather than
    * the total: a GCD gap that sat inside one of them is not a gap the player could have filled.
    *
-   * Two shapes, because the handlers differ: most keep a downtimeTracker, a few keep the list
-   * themselves. Anything unexpected yields no windows, and the GCD columns simply go back to
-   * charging every gap.
+   * Three shapes, because the handlers differ, and all of them have to be read or the GCD columns
+   * disagree with the DPS columns about the same pull:
+   *
+   *   - a downtimeTracker of committed intervals plus the open one (M8S, Necron, most of 7.2/7.3)
+   *   - a downtimePeriods list plus an open downtimeStart (FRU)
+   *   - named start/end pairs: one for P12S and M4S, two for M5S, one per transition for TOP
+   *
+   * The pairs read the way the parser's own downtimeForRange reads them: a start of 0 means the
+   * window never opened, an end of 0 - or a field the handler does not have at all - means it has
+   * not closed yet and runs to the latest line parsed. Anything unexpected yields no windows, and
+   * the GCD columns simply go back to charging every gap.
    */
   function downtimeWindows() {
     const out = [];
@@ -222,7 +249,17 @@
       }
 
       for (const w of handler.downtimePeriods || []) push(w.start, w.end);
-      if (Number(handler.downtimeStart) > 0) push(handler.downtimeStart, state.lastLineMs);
+
+      // A handler carries at most one of these sets; the others read as undefined and are skipped.
+      // FRU is the one that keeps both a list and a start: its closed windows are in
+      // downtimePeriods above and downtimeStart is zeroed as each one closes, so the pair below
+      // only ever describes the window still open.
+      for (const [startKey, endKey] of DOWNTIME_PAIRS) {
+        const start = Number(handler[startKey]);
+        if (!(start > 0)) continue;
+        const end = Number(handler[endKey]);
+        push(start, end > start ? end : state.lastLineMs);
+      }
     } catch (e) {
       state.lastError = 'downtimeWindows: ' + message(e);
     }
