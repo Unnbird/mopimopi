@@ -1,9 +1,13 @@
 /**
- * Runs mopimopi's real Person / Combatant code (js/core.js) on a CombatData message and checks
- * where the rDPS family comes from now: the FFLogs parser's four totals that js/fflogs/apply.js
- * writes into a row, and nothing else. The export variables the retired RdpsOverlay addon used
- * to inject (rdpsTotal, rdps, rawdps, ...) must be ignored on the way in, while the GCD columns
- * (written by js/gcd/apply.js, or by the OverlayPluginAddon ACT addon) pass straight through.
+ * Runs mopimopi's real Person / Combatant code (js/core.js) on a CombatData message and checks the
+ * one job this page still has for the numbers: choosing, per row, between ACT's figure and the one
+ * OverlayPluginAddon worked out with FFLogs' parser.
+ *
+ * Nothing is computed from log lines here any more. The rDPS family and the GCD columns arrive
+ * already divided and must be shown exactly as they came; everything else arrives twice, once
+ * under ACT's name and once prefixed, and preferFflogs picks. The distinction that matters most is
+ * empty versus zero: empty means FFLogs has nothing for this row and ACT's figure stands, zero
+ * means FFLogs counted it under someone else and the row really is worth nothing.
  *
  * Usage:  node tests/test-core-person.js
  */
@@ -28,7 +32,7 @@ const sandbox = {
 	navigator: { userAgent: '' },
 	location: { search: '' },
 	wsUri: '',
-	init: { q: { pets: 1 } },
+	init: { q: { pets: 1, fflogs: 1 } },
 };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
@@ -42,40 +46,112 @@ function check(label, actual, expected) {
 	if (!ok) failures++;
 	console.log(`${ok ? 'PASS' : 'FAIL'} ${label.padEnd(58)} actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`);
 }
+function section(title) { console.log(`\n=============== ${title} ===============`); }
 
-const duration = 512;        // the fight minus its downtime: what damage is divided by
-const healDuration = 600;    // the whole fight: what healing is divided by
-const rate = (total) => Math.round(total / duration * 100) / 100;
-const healRate = (total) => Math.round(total / healDuration * 100) / 100;
+// The two clocks the plugin exports: damage is divided by the fight minus its downtime, healing by
+// the whole fight. ACT's own DURATION is neither, and is deliberately different here so that a
+// column dividing by the wrong one is visible.
+const duration = 455;
+const healDuration = 515;
+const actDuration = 600;
 
-// One row as apply.js leaves it (FFLogs totals written in), one as a stale RdpsOverlay would
-// have sent it (legacy export variables only), both with the GCD columns already written in.
+// One CombatData message as OverlayPluginAddon leaves it. Every row carries ACT's figures and,
+// beside them, the plugin's: the rDPS family under its own names, the rest prefixed.
 const combatData = {
-	// Two clocks, as js/fflogs/apply.js writes them: DURATION is the fight without its downtime
-	// and divides every damage column, HEALDURATION is the whole fight and divides the healing.
-	// fflogsRdps is the raid's rDPS total apply.js writes beside the damage total: every parsed
-	// row's (amount - taken + given), plus ACT's damage for the rows FFLogs never matched -
-	// here the legacy one. rdpsPct is a share of it.
-	Encounter: { title: 'M4S', duration: '10:00', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '19568640', fflogsRdps: String(9434064 + 9784320), healed: '2048000', ENCDPS: '38220' },
+	Encounter: {
+		title: 'M4S', duration: '10:00',
+		DURATION: String(actDuration), damage: '99999999', healed: '1', ENCDPS: '1',
+		fflogsDuration: String(duration), fflogsHealDuration: String(healDuration),
+		fflogsDamage: String(9784320 + 9784320 + 500000), fflogsHealed: '1536000',
+		fflogsRdps: '19218384', fflogsDowntime: '60', fflogsApplied: '1', fflogsParserVersion: '3075',
+		// The header totals. Divided in the plugin against the same two clocks the rows were.
+		fflogsEncdps: String(Math.round((9784320 + 9784320 + 500000) / duration)),
+		fflogsEnchps: String(Math.round(1536000 / healDuration)),
+	},
 	Combatant: {
 		'Fflogs Player': {
-			name: 'Fflogs Player', Job: 'RPR', DURATION: String(duration), HEALDURATION: String(healDuration), damage: '9784320', hits: '400', swings: '400', misses: '0',
-			crithits: '100', DirectHitCount: '80', CritDirectHitCount: '20', maxhit: 'Communio-89000', MAXHIT: '89000',
-			healed: '1024000', overHeal: '0', damageShield: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+			name: 'Fflogs Player', Job: 'RPR',
+			// ACT's figures, which the plugin's must win over.
+			DURATION: String(actDuration), damage: '1', hits: '1', swings: '400', misses: '0',
+			crithits: '1', DirectHitCount: '1', CritDirectHitCount: '1', maxhit: 'Ignored-1', MAXHIT: '1',
+			healed: '1', overHeal: '1', heals: '1', critheals: '1', maxheal: '', MAXHEAL: '0', deaths: '1',
 			damagetaken: '0', healstaken: '0',
-			fflogsAmount: '9784320', fflogsAmountTaken: '975872', fflogsSingleTargetAmountTaken: '0', fflogsAmountGiven: '625616',
-			// A stale RdpsOverlay still exporting its columns alongside: these must lose.
-			rdpsTotal: '1', adpsTotal: '1', ndpsTotal: '1', cdpsTotal: '1', rdps: '1', adps: '1', ndps: '1', cdps: '1', rdpsDelta: '1', rawdps: '1',
+			// The plugin's.
+			fflogsDuration: String(duration), fflogsHealDuration: String(healDuration),
+			fflogsDamage: '9784320', fflogsHits: '400', fflogsCrithits: '100',
+			fflogsDirectHitCount: '80', fflogsCritDirectHitCount: '20',
+			fflogsMaxhit: 'Communio-89000', fflogsMAXHIT: '89000',
+			fflogsHealed: '1024000', fflogsOverHeal: '24000', fflogsHeals: '10', fflogsCritheals: '2',
+			fflogsMaxheal: 'Arcane Crest-4000', fflogsMAXHEAL: '4000', fflogsDeaths: '0',
+			rdps: '19241.5', adps: '19107.2', ndps: '17201.3', cdps: '20345.8',
+			rdpsDelta: '234.1', rdpsPct: '51.2',
 			gcdUptime: '92.6', gcdCount: '198', gcdClip: '4.2', gcdRecast: '2.5',
 		},
-		'Legacy Only': {
-			// No HEALDURATION: a row the parser never touched keeps ACT's single duration for both.
-			name: 'Legacy Only', Job: 'BLM', DURATION: String(duration), damage: '9784320', hits: '400', swings: '400', misses: '0',
-			crithits: '100', DirectHitCount: '80', CritDirectHitCount: '20', maxhit: 'Fire IV-70000', MAXHIT: '70000',
-			healed: '512000', overHeal: '0', damageShield: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+		// A summoner and the pet FFLogs keeps as a row of its own: the owner's damage excludes it,
+		// the pet's row carries it, and AttachPets adds them back to the parser's total.
+		'Summoner S': {
+			name: 'Summoner S', Job: 'SMN',
+			DURATION: String(actDuration), damage: '1', hits: '1', swings: '200', misses: '0',
+			crithits: '0', DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0',
+			healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
 			damagetaken: '0', healstaken: '0',
-			rdpsTotal: '9434064', adpsTotal: '9784320', ndpsTotal: '8808448', cdpsTotal: '10405376', rawdps: '19105',
+			fflogsDuration: String(duration), fflogsHealDuration: String(healDuration),
+			fflogsDamage: '9784320', fflogsHits: '200', fflogsCrithits: '50',
+			fflogsDirectHitCount: '0', fflogsCritDirectHitCount: '0',
+			fflogsMaxhit: 'Ruin III-30000', fflogsMAXHIT: '30000',
+			fflogsHealed: '0', fflogsOverHeal: '0', fflogsHeals: '0', fflogsCritheals: '0',
+			fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
+			rdps: '18000', adps: '18000', ndps: '18000', cdps: '18000',
+			rdpsDelta: '0', rdpsPct: '48.8',
 			gcdUptime: '88.1', gcdCount: '190', gcdClip: '9.9', gcdRecast: '2.37',
+		},
+		'Demi-Bahamut (Summoner S)': {
+			name: 'Demi-Bahamut (Summoner S)', Job: '',
+			DURATION: String(actDuration), damage: '7777', hits: '20', swings: '20', misses: '0',
+			crithits: '0', DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0',
+			healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+			damagetaken: '0', healstaken: '0',
+			fflogsDuration: String(duration), fflogsHealDuration: String(healDuration),
+			fflogsDamage: '500000', fflogsHits: '20', fflogsCrithits: '5',
+			fflogsDirectHitCount: '0', fflogsCritDirectHitCount: '0',
+			fflogsMaxhit: 'Wyrmwave-60000', fflogsMAXHIT: '60000',
+			fflogsHealed: '0', fflogsOverHeal: '0', fflogsHeals: '0', fflogsCritheals: '0',
+			fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
+			// A pet gets no rate of its own: the owner's row already carries the folded rDPS.
+			rdps: '0', adps: '0', ndps: '0', cdps: '0', rdpsDelta: '0', rdpsPct: '0',
+			gcdUptime: '0', gcdCount: '0', gcdClip: '0', gcdRecast: '2.5',
+		},
+		// A pet the parser folded into its owner: every plugin figure is zero, and zero must win
+		// over ACT's 4242 or the owner would be handed its pet's damage twice.
+		'Carbuncle (Summoner S)': {
+			name: 'Carbuncle (Summoner S)', Job: '',
+			DURATION: String(actDuration), damage: '4242', hits: '9', swings: '9', misses: '0',
+			crithits: '0', DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0',
+			healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+			damagetaken: '0', healstaken: '0',
+			fflogsDuration: String(duration), fflogsHealDuration: String(healDuration),
+			fflogsDamage: '0', fflogsHits: '0', fflogsCrithits: '0',
+			fflogsDirectHitCount: '0', fflogsCritDirectHitCount: '0',
+			fflogsMaxhit: '', fflogsMAXHIT: '0',
+			fflogsHealed: '0', fflogsOverHeal: '0', fflogsHeals: '0', fflogsCritheals: '0',
+			fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
+			rdps: '0', adps: '0', ndps: '0', cdps: '0', rdpsDelta: '0', rdpsPct: '0',
+			gcdUptime: '0', gcdCount: '0', gcdClip: '0', gcdRecast: '2.5',
+		},
+		// A row FFLogs never saw: every plugin column is empty, and empty is what gets shown.
+		'Striking Dummy': {
+			name: 'Striking Dummy', Job: 'MNK',
+			DURATION: String(actDuration), damage: '123456', hits: '77', swings: '77', misses: '0',
+			crithits: '7', DirectHitCount: '7', CritDirectHitCount: '1', maxhit: 'Bootshine-5000', MAXHIT: '5000',
+			healed: '6000', overHeal: '1000', heals: '3', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '2',
+			damagetaken: '0', healstaken: '0',
+			fflogsDuration: '', fflogsHealDuration: '',
+			fflogsDamage: '', fflogsHits: '', fflogsCrithits: '',
+			fflogsDirectHitCount: '', fflogsCritDirectHitCount: '', fflogsMaxhit: '', fflogsMAXHIT: '',
+			fflogsHealed: '', fflogsOverHeal: '', fflogsHeals: '', fflogsCritheals: '',
+			fflogsMaxheal: '', fflogsMAXHEAL: '', fflogsDeaths: '',
+			rdps: '', adps: '', ndps: '', cdps: '', rdpsDelta: '', rdpsPct: '',
+			gcdUptime: '73.4', gcdCount: '60', gcdClip: '30.1', gcdRecast: '2.5',
 		},
 	},
 	isActive: 'true',
@@ -86,78 +162,164 @@ parsed.summonerMerge = true;
 parsed.AttachPets();
 parsed.resort('mergedDamage', 1);
 
-const fflogs = parsed.Combatant['Fflogs Player'];
-const legacy = parsed.Combatant['Legacy Only'];
+const reaper = parsed.Combatant['Fflogs Player'];
+const summoner = parsed.Combatant['Summoner S'];
+const demi = parsed.Combatant['Demi-Bahamut (Summoner S)'];
+const carbuncle = parsed.Combatant['Carbuncle (Summoner S)'];
+const dummy = parsed.Combatant['Striking Dummy'];
 
-console.log('=============== rDPS family derives from the FFLogs totals ===============');
-check('rdps = (amount - taken + given) / DURATION', fflogs.rdps, rate(9784320 - 975872 + 625616));
-check('adps = (amount - single) / DURATION', fflogs.adps, rate(9784320));
-check('ndps = (amount - taken) / DURATION', fflogs.ndps, rate(9784320 - 975872));
-check('cdps = (amount - single + given) / DURATION', fflogs.cdps, rate(9784320 + 625616));
-check('rdpsDelta = rdps - own damage rate', fflogs.rdpsDelta, rate(625616 - 975872));
-check('encdps for comparison', fflogs.encdps, rate(9784320));
-check('the four FFLogs totals parse as numbers', fflogs.fflogsAmountGiven, 625616);
+console.log('=============== the plugin\'s figures win over ACT\'s ===============');
+check('damage', reaper.damage, 9784320);
+check('hits', reaper.hits, 400);
+check('crits', reaper.crithits, 100);
+check('direct hits', reaper.DirectHitCount, 80);
+check('critical direct hits', reaper.CritDirectHitCount, 20);
+check('biggest hit keeps ACT\'s spelling', reaper.maxhit, 'Communio-89000');
+check('and its bare number', reaper.MAXHIT, 89000);
+check('healing', reaper.healed, 1024000);
+check('overheal', reaper.overHeal, 24000);
+check('deaths', reaper.deaths, 0);
 
-console.log('\n=============== rDPS% is a share of the raid total, not of a duration ===============');
-check('rdpsPct = own rDPS / the raid rDPS total', fflogs.rdpsPct, Math.round(9434064 / (9434064 + 9784320) * 10000) / 100);
-check('a row with no FFLogs totals has no rdpsPct', legacy.rdpsPct, undefined);
-// The per-row totals without the encounter one - an older apply.js, or a message that predates
-// it - must leave the column out rather than divide by nothing.
-const noTotal = new sandbox.Combatant({
-	detail: Object.assign({}, combatData, { Encounter: Object.assign({}, combatData.Encounter, { fflogsRdps: '0' }) }),
-}, 'encdps');
-noTotal.AttachPets();
-check('no raid total: rdps still derived', noTotal.Combatant['Fflogs Player'].rdps, rate(9784320 - 975872 + 625616));
-check('no raid total: no rdpsPct', noTotal.Combatant['Fflogs Player'].rdpsPct, undefined);
+section('the two clocks, and they are not the same one');
+check('DURATION is the fight minus its downtime', reaper.DURATION, duration);
+check('HEALDURATION is the whole fight', reaper.HEALDURATION, healDuration);
+check('dps divides by the damage clock', reaper.dps, Math.round(9784320 / duration * 100) / 100);
+check('hps divides by the healing clock', reaper.hps, Math.round(1024000 / healDuration * 100) / 100);
+// The encounter row gets the same treatment, or encdps and dps would disagree on the same row.
+check('the encounter clock too', parsed.DURATION, duration);
+check('encdps follows it', reaper.encdps, Math.round(9784320 / duration * 100) / 100);
 
-console.log('\n=============== damage and healing divide by different clocks ===============');
-// FFLogs takes downtime off the damage clock only. Dividing healing by the same shortened clock
-// would print an HPS the FFLogs report never shows.
-check('dps divides by DURATION', fflogs.dps, rate(9784320));
-check('hps divides by HEALDURATION', fflogs.hps, healRate(1024000));
-check('enchps too', fflogs.enchps, healRate(1024000));
-check('a row without HEALDURATION falls back to DURATION', legacy.hps, rate(512000));
-// A message no parser ever touched: one duration, both rates on it, exactly as before.
-const actOnly = new sandbox.Combatant({
+section('the rDPS family is shown as sent, never divided again');
+check('rdps', reaper.rdps, 19241.5);
+check('adps', reaper.adps, 19107.2);
+check('ndps', reaper.ndps, 17201.3);
+check('cdps', reaper.cdps, 20345.8);
+check('rdpsDelta', reaper.rdpsDelta, 234.1);
+check('rdpsPct', reaper.rdpsPct, 51.2);
+// The bug this guards: dividing an already-divided column by the duration a second time.
+check('not rdps / duration', reaper.rdps !== Math.round(19241.5 / duration * 100) / 100, true);
+
+section('the GCD columns pass straight through');
+check('gcdUptime', reaper.gcdUptime, 92.6);
+check('gcdCount', reaper.gcdCount, 198);
+check('gcdClip', reaper.gcdClip, 4.2);
+check('gcdRecast', reaper.gcdRecast, 2.5);
+
+section('pets: a share each, adding back up to the parser\'s total');
+check('the owner\'s own damage', summoner.damage, 9784320);
+check('the pet FFLogs kept apart', demi.damage, 500000);
+// Zero, and ACT's 4242 does not come back: the parser counted Carbuncle under its owner already,
+// so anything here would be counted twice once AttachPets sums the pet rows into the owner.
+check('one it folded in reads zero', carbuncle.damage, 0);
+check('merged lands on the parser\'s total', summoner.mergedDamage, 9784320 + 500000);
+check('and not on ACT\'s figures', summoner.mergedDamage !== 1 + 7777 + 4242, true);
+check('the owner keeps its own rDPS', summoner.rdps, 18000);
+check('the pet has none', demi.rdps, 0);
+
+section('a row FFLogs never saw reads empty - there is no falling back to ACT');
+// The table says what FFLogs says about this pull, or it says nothing. Half a row from each source
+// would put two different measurements of the same pull in adjacent columns.
+check('damage', dummy.damage, 0);
+check('hits', dummy.hits, 0);
+check('healing', dummy.healed, 0);
+check('deaths', dummy.deaths, 0);
+check('no rDPS either', dummy.rdps, 0);
+check("ACT's figures are gone, not kept", dummy.damage !== 123456, true);
+// GCD uptime is measured off the log lines, not off FFLogs' fight, so it is there regardless.
+check('but GCD uptime is still measured', dummy.gcdUptime, 73.4);
+
+section('the encounter row, so D% is a share of the same table');
+check('encounter damage', parsed.Encounter.damage, 9784320 + 9784320 + 500000);
+check('encounter healing', parsed.Encounter.healed, 1536000);
+// The header prints these. ACT's own ENCDPS was 1 in this message; the plugin's must have won, or
+// the header would be describing a different pull from the table under it.
+check('raid DPS', parsed.Encounter.ENCDPS, Math.round((9784320 + 9784320 + 500000) / duration));
+check('raid HPS', parsed.Encounter.ENCHPS, Math.round(1536000 / healDuration));
+// Owners only: damagePct is a share of the merged total, and a pet's share is already inside its
+// owner's. The dummy is outside this sum because FFLogs never saw it - its damage is ACT's and the
+// encounter total is FFLogs', which is exactly the mix the plugin leaves behind for rows it does
+// not know.
+const pct = reaper.damagePct + summoner.damagePct;
+check('the FFLogs rows add up to 100%', Math.round(pct * 10) / 10, 100);
+
+section('where the figures came from');
+check('applied', parsed.fflogs.applied, true);
+check('which parser', parsed.fflogs.parserVersion, '3075');
+check('downtime', parsed.fflogs.downtimeSeconds, 60);
+
+section('the setting is a display choice now');
+sandbox.init.q.fflogs = 0;
+const actOnly = new sandbox.Combatant({ detail: combatData }, 'encdps');
+check('ACT\'s damage', actOnly.Combatant['Fflogs Player'].damage, 1);
+check('ACT\'s duration', actOnly.Combatant['Fflogs Player'].DURATION, actDuration);
+check('ACT\'s encounter total', actOnly.Encounter.damage, 99999999);
+// The rDPS family is not ACT's to have, so it is left alone either way.
+check('rdps is still shown', actOnly.Combatant['Fflogs Player'].rdps, 19241.5);
+sandbox.init.q.fflogs = 1;
+
+section('solo: rDPS is just DPS when there is nobody to give or take buffs');
+// The bug this guards: rDPS is divided in the plugin, against the exact length of the fight, while
+// every other per-second column is divided here, against the column the plugin sent. Rounding that
+// column to whole seconds put the two sides on different divisors - 30.4s against 30s - and a solo
+// pull, where the two columns are by definition the same number, showed them 1-2% apart.
+const soloDamage = 4823917;
+const soloSeconds = 30.4;
+const solo = new sandbox.Combatant({
 	detail: {
-		Encounter: { title: 'ACT only', duration: '08:32', DURATION: String(duration), damage: '1', healed: '512000' },
-		Combatant: { Solo: { name: 'Solo', Job: 'WHM', DURATION: String(duration), damage: '0', healed: '512000', overHeal: '0', damageShield: '0', heals: '1', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0', hits: '1', swings: '1', misses: '0', crithits: '0', DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0', damagetaken: '0', healstaken: '0' } },
+		Encounter: {
+			title: 'Striking Dummy', duration: '00:30',
+			DURATION: '30', damage: String(soloDamage), healed: '0', ENCDPS: '160797',
+			fflogsDuration: String(soloSeconds), fflogsHealDuration: String(soloSeconds),
+			fflogsDamage: String(soloDamage), fflogsHealed: '0',
+			fflogsRdps: String(soloDamage), fflogsDowntime: '0',
+			fflogsApplied: '1', fflogsParserVersion: '3075',
+		},
+		Combatant: {
+			'Solo Player': {
+				name: 'Solo Player', Job: 'SAM',
+				DURATION: '30', damage: String(soloDamage), hits: '90', swings: '90', misses: '0',
+				crithits: '20', DirectHitCount: '18', CritDirectHitCount: '5', maxhit: 'Midare-120000', MAXHIT: '120000',
+				healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+				damagetaken: '0', healstaken: '0',
+				fflogsDuration: String(soloSeconds), fflogsHealDuration: String(soloSeconds),
+				fflogsDamage: String(soloDamage), fflogsHits: '90', fflogsCrithits: '20',
+				fflogsDirectHitCount: '18', fflogsCritDirectHitCount: '5',
+				fflogsMaxhit: 'Midare Setsugekka-120000', fflogsMAXHIT: '120000',
+				fflogsHealed: '0', fflogsOverHeal: '0', fflogsHeals: '0', fflogsCritheals: '0',
+				fflogsMaxheal: '', fflogsMAXHEAL: '0', fflogsDeaths: '0',
+				// Nobody to take from and nobody to give to, so all four are the same figure, and
+				// the plugin divided every one of them by 30.4.
+				rdps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
+				adps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
+				ndps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
+				cdps: String(Math.round(soloDamage / soloSeconds * 100) / 100),
+				rdpsDelta: '0', rdpsPct: '100',
+				gcdUptime: '96.4', gcdCount: '12', gcdClip: '0.4', gcdRecast: '2.5',
+			},
+		},
 		isActive: 'true',
 	},
 }, 'encdps');
-actOnly.AttachPets();
-check('so does the encounter when the parser is not on', actOnly.Combatant.Solo.enchps, rate(512000));
+// process.js does this on every message before drawing; it is what fills the derived columns in.
+solo.AttachPets();
+const player = solo.Combatant['Solo Player'];
+check('the clock keeps its fraction', player.DURATION, soloSeconds);
+check('the encounter clock too', solo.DURATION, soloSeconds);
+check('DPS divides by the same one', player.encdps, Math.round(soloDamage / soloSeconds * 100) / 100);
+check('so rDPS and DPS agree', player.rdps, player.encdps);
+check('and so do the other three', player.adps + player.ndps + player.cdps, player.encdps * 3);
+check('nothing was given or taken', player.rdpsDelta, 0);
 
-console.log('\n=============== legacy RdpsOverlay export variables are ignored ===============');
-check('rdpsTotal never copied onto the Person', fflogs.rdpsTotal, undefined);
-check('rawdps never copied', fflogs.rawdps, undefined);
-check('a legacy-only row has no rdps', legacy.rdps, undefined);
-check('a legacy-only row has no adps', legacy.adps, undefined);
-check('a legacy-only row has no rdpsDelta', legacy.rdpsDelta, undefined);
-check('legacy rdps rate did not leak in either', legacy.rdpsTotal, undefined);
-check('its plain columns are untouched', legacy.damage, 9784320);
-
-console.log('\n=============== GCD columns pass straight through, undivided ===============');
-check('gcdUptime shown as sent', fflogs.gcdUptime, 92.6);
-check('gcdCount', fflogs.gcdCount, 198);
-check('gcdClip', fflogs.gcdClip, 4.2);
-check('gcdRecast', fflogs.gcdRecast, 2.5);
-check('gcdUptime on the legacy row too', legacy.gcdUptime, 88.1);
-
-console.log('\n=============== pet merge leaves the derived columns alone ===============');
-parsed.summonerMerge = true;
-parsed.AttachPets();
-const merged = parsed.Combatant['Fflogs Player'];
-check('rdps after AttachPets', merged.rdps, rate(9784320 - 975872 + 625616));
-check('rdpsDelta stays negative', merged.rdpsDelta, rate(625616 - 975872));
-check('gcdUptime after AttachPets', merged.gcdUptime, 92.6);
-
-console.log('\n=============== an untagged message ===============');
-check('no fflogs tag -> null', parsed.fflogs, null);
-
-console.log('');
-if (failures > 0) {
-	console.log(`==> ${failures} check(s) FAILED`);
-	process.exit(1);
+section('a message from a mopimopi with no addon');
+const bare = JSON.parse(JSON.stringify(combatData));
+for (const key of Object.keys(bare.Encounter)) if (key.startsWith('fflogs')) delete bare.Encounter[key];
+for (const row of Object.values(bare.Combatant)) {
+	for (const key of Object.keys(row)) if (key.startsWith('fflogs')) delete row[key];
 }
-console.log('==> all checks passed');
+const untagged = new sandbox.Combatant({ detail: bare }, 'encdps');
+check('no tag', untagged.fflogs, null);
+check('ACT\'s figures throughout', untagged.Combatant['Fflogs Player'].damage, 1);
+check('and ACT\'s clock', untagged.Combatant['Fflogs Player'].DURATION, actDuration);
+
+console.log(failures === 0 ? '\n==> all checks passed' : `\n==> ${failures} check(s) FAILED`);
+process.exitCode = failures === 0 ? 0 : 1;

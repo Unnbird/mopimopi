@@ -5,7 +5,6 @@ Mopi2 = {
         hideName: 0,
         pets: 1,
         fflogs: 1,
-        fflogsRegion: 1,
         dpsType: 0,
         perType: 1,
         dmgType: 1,

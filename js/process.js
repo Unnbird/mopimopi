@@ -127,9 +127,9 @@ function update(lastDPS, lastHPS) {
         $('nav table[name=ACT_1line]').fadeIn(0)
     }    
     $('[name=target]').text(lastDPS.Encounter.title)
-    // Whose figures the table shows. Only tagged messages carry `fflogs` (the settings preview and
-    // a mopimopi without the parser do not), so those keep the header exactly as it was.
-    if (lastDPS.fflogs && typeof FflogsMeter !== 'undefined' && init.q.fflogs != 0)
+    // Whose figures the table shows. Only a message from OverlayPluginAddon carries the tag (the
+    // settings preview and a mopimopi without the addon do not), so those keep the header as it was.
+    if (lastDPS.fflogs && init.q.fflogs != 0)
         $('[name=target]').append(' <font class="ex">' + (lastDPS.fflogs.applied ? 'FFLogs' : 'ACT') + '</font>')
     $('[name=time]').text(lastDPS.Encounter.duration)
     if (init.q.tableOrder == 1)
@@ -437,7 +437,7 @@ function addData(colName, a, p) {
         case 'EncounterDuration':
             return a
         case 'gcdUptime':
-            // One decimal, fixed: js/gcd measures this to 0.01 and a whole percent hides the
+            // One decimal, fixed: the plugin measures this to 0.01 and a whole percent hides the
             // difference between a clean rotation and one clipping every few GCDs.
             return addComma(a, null, 1) + '<font class="ex">%</font>';
         case 'gcdRecast':

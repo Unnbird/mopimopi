@@ -568,18 +568,6 @@ l = {
                     i: "verified",
                     e: "li_checkbox",
                     ul: 0
-                },
-                fflogsRegion: {
-                    tt: d.fflogsRegion,
-                    m: {
-                        1: d.fflogsRegionGlobal,
-                        5: d.fflogsRegionCN,
-                        4: d.fflogsRegionKR
-                    },
-                    i: "public",
-                    e: "li_radio",
-                    p: "Data_general",
-                    ul: 0
                 }
             }
         },

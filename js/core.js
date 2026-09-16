@@ -284,24 +284,6 @@ function domReady() {
         console.log("[ERROR] : WebSocket has Error [] " + ex)
     }
     try {
-        // Settings may not be loaded yet at this point (ui.js reads them in its own ready handler),
-        // so start with the default region; ui.js hands the stored one over as soon as it has it.
-        if (typeof FflogsMeter !== 'undefined') {
-            var fflogsRegion = (typeof init !== 'undefined' && init && init.q && init.q.fflogsRegion) ? init.q.fflogsRegion : 1
-            FflogsMeter.init(fflogsRegion)
-        }
-    } catch (ex) {
-        console.log("[ERROR] : FFLogs parser failed to start " + ex)
-    }
-    try {
-        // GCD uptime (js/gcd/meter.js) runs off the same log lines and needs no settings: it is
-        // always on.
-        if (typeof GcdMeter !== 'undefined' && !GcdMeter.init())
-            console.log("[WARN] : GCD uptime not running: " + GcdMeter.state.reason)
-    } catch (ex) {
-        console.log("[ERROR] : GCD uptime failed to start " + ex)
-    }
-    try {
         document.addEventListener('beforeLogLineRead', beforeLogLineRead)
     } catch (ex) { }
     try {
@@ -330,15 +312,11 @@ function onRecvMessage(e) {
 }
 function onBroadcastMessage(e) {
     if (e.detail.msgtype == "CombatData") {
-        // The GCD columns (js/gcd/meter.js) go in first, over whatever an ACT addon may have put
-        // there. They must see ACT's own isActive / DURATION: that is how the GCD meter tells a new
-        // encounter apart, and ACT splitting a pull at a phase transition (M8S) is exactly the reset
-        // that keeps the transition from being booked as lost GCD time.
-        lastCombatRaw = (typeof GcdMeter !== 'undefined') ? GcdMeter.overlay(e.detail.msg, myName) : e.detail.msg;
-        // Then FFLogs' parser (js/fflogs/meter.js) writes its figures over the message, when it is
-        // loaded, switched on and on the same pull - rewriting DURATION to its own fight's length,
-        // which is why it runs second; otherwise the message passes through as it came.
-        if (typeof FflogsMeter !== 'undefined') lastCombatRaw = FflogsMeter.overlay(lastCombatRaw, myName);
+        // The message arrives with every figure already worked out. OverlayPluginAddon runs FFLogs'
+        // parser and the GCD model in the plugin, off the same log lines ACT is reading, and exports
+        // the results as extra columns on this very message; Person picks between them and ACT's own
+        // (see preferFflogs). Nothing is computed from log lines here any more.
+        lastCombatRaw = e.detail.msg;
         lastCombat = new Combatant({
             detail: lastCombatRaw
         }, sortKey);
@@ -363,11 +341,9 @@ function onBroadcastMessage(e) {
             case "AbilityUse":
                 break;
             case "Chat":
-                // In OverlayPlugin's ACTWebSocket compatibility mode every network log line
-                // arrives here as the raw line; that is the feed FFLogs' parser and the GCD
-                // meter both live on.
-                if (typeof FflogsMeter !== 'undefined') FflogsMeter.feed(e.detail.msg);
-                if (typeof GcdMeter !== 'undefined') GcdMeter.feed(e.detail.msg);
+                // In OverlayPlugin's ACTWebSocket compatibility mode every network log line arrives
+                // here as the raw line. Nothing in this page reads them any more - the plugin sees
+                // the same lines first, and on the thread ACT reads them on.
                 document.dispatchEvent(new CustomEvent("onChatting", {
                     detail: e.detail.msg
                 }));
@@ -378,17 +354,90 @@ function onBroadcastMessage(e) {
         }
     }
 }
+/**
+ * Where a row's numbers come from.
+ *
+ * OverlayPluginAddon works the FFLogs figures out in the plugin, off the same log lines ACT is
+ * reading, and hands them over as extra columns on the CombatData message. The rDPS family arrives
+ * under its own names - nothing in ACT is called rdps - but everything else has to arrive prefixed,
+ * because ACT owns damage, healed, maxhit and the rest, and an ACT export variable can only add a
+ * key, never replace one. So both figures travel side by side on the same row, and this is where
+ * the FFLogs one takes over.
+ *
+ * There is no falling back. A column the addon sent is shown as it came, empty included - the table
+ * says what FFLogs says about this pull, or it says nothing. Mixing the two sources row by row is
+ * what this avoids: FFLogs' rDPS next to ACT's damage is two different measurements of the same
+ * pull in adjacent columns, and D% stops adding up to 100%.
+ *
+ * The one thing that is not overwritten is a column the addon never sent at all. With no addon
+ * installed none of these keys exist, nothing is copied, and the page is the plain mopimopi it was
+ * before.
+ */
+var fflogsRowColumns = {
+    fflogsDamage: "damage",
+    fflogsHits: "hits",
+    fflogsCrithits: "crithits",
+    fflogsDirectHitCount: "DirectHitCount",
+    fflogsCritDirectHitCount: "CritDirectHitCount",
+    fflogsMaxhit: "maxhit",
+    fflogsMAXHIT: "MAXHIT",
+    fflogsHealed: "healed",
+    fflogsOverHeal: "overHeal",
+    fflogsHeals: "heals",
+    fflogsCritheals: "critheals",
+    fflogsMaxheal: "maxheal",
+    fflogsMAXHEAL: "MAXHEAL",
+    fflogsDeaths: "deaths",
+    // Two clocks, and they are not the same one: FFLogs divides damage by the fight minus its
+    // downtime and healing by the whole fight. Person.recalculate() reads both.
+    fflogsDuration: "DURATION",
+    fflogsHealDuration: "HEALDURATION"
+}
+
+/**
+ * The same for the encounter row. D% and the header totals are shares of, and rates over, this
+ * table - so they have to come from the same place the rows did or they describe a different pull.
+ */
+var fflogsEncounterColumns = {
+    fflogsDamage: "damage",
+    fflogsHealed: "healed",
+    fflogsDuration: "DURATION",
+    fflogsHealDuration: "HEALDURATION",
+    fflogsEncdps: "ENCDPS",
+    fflogsEnchps: "ENCHPS"
+}
+
+/**
+ * A copy of one CombatData row with the addon's figures moved over ACT's, leaving the originals
+ * behind. The message itself is not touched: it is dispatched on as onOverlayDataUpdate for anyone
+ * else listening, and it should reach them as it arrived.
+ */
+function preferFflogs(row, columns) {
+    if (!row || typeof row != "object") return row;
+    // The settings switch is a display choice, not a parser switch: with it off the table shows
+    // ACT's own figures even though the addon is still working the others out.
+    if (typeof init !== 'undefined' && init && init.q && init.q.fflogs == 0) return row;
+
+    var out = null;
+    for (var key in columns) {
+        if (!(key in row)) continue;
+        if (out === null) {
+            out = {};
+            for (var k in row) out[k] = row[k];
+        }
+        out[columns[key]] = row[key];
+    }
+    return out === null ? row : out;
+}
+
 function Person(e, p) {
     this.EncounterDuration = p.Encounter.duration;
     this.parent = p;
     this.Class = "";
+    e = preferFflogs(e, fflogsRowColumns);
     for (var i in e) {
         if (i.indexOf("NAME") > -1) continue;
         if (i == "t" || i == "n") continue;
-        // The rDPS family used to arrive from the RdpsOverlay addon as export variables. That
-        // addon is retired: these columns are computed in recalculate() from the FFLogs parser's
-        // own figures, and a plugin still exporting the old keys must not leak into them.
-        if (legacyRdpsKeys[i]) continue;
         // A leading '-' immediately followed by a digit is a sign, not a placeholder: a plugin
         // column may legitimately be negative and would otherwise be kept as a string and break
         // every numeric formatter downstream. "--" / "---" still fall through to the 0 case below.
@@ -681,9 +730,9 @@ Person.prototype.recalculate = function () {
     var dur = this.DURATION;
     if (dur == 0) dur = 1;
     // FFLogs measures damage over the fight minus its downtime - the stretches where the boss
-    // cannot be hit - and healing over the whole fight. js/fflogs/apply.js writes the first clock
-    // into DURATION and the second into HEALDURATION; without the parser there is no
-    // HEALDURATION and both fall back to ACT's one duration, as before.
+    // cannot be hit - and healing over the whole fight. preferFflogs puts the first clock into
+    // DURATION and the second into HEALDURATION; with no addon there is no HEALDURATION and both
+    // fall back to ACT's one duration, as before.
     var hdur = this.HEALDURATION || dur;
     var encdur = this.parent.DURATION;
     var enchdur = (this.parent.Encounter && this.parent.Encounter.HEALDURATION) || encdur;
@@ -699,35 +748,12 @@ Person.prototype.recalculate = function () {
     this.ENCHPS = Math.floor(this.enchps);
     this["ENCDPS-k"] = Math.floor(this.encdps / 1000);
     this["ENCHPS-k"] = Math.floor(this.enchps / 1000);
-    // The rDPS family exists only when the FFLogs parser wrote its four totals into this row
-    // (js/fflogs/apply.js): amount, amountTaken, singleTargetAmountTaken, amountGiven. They are
-    // derived here, divided by the same duration encdps uses so they fall off at the same pace
-    // when the player stops attacking. Nothing else feeds them - see the Person constructor.
-    if (this.fflogsAmount != undefined) {
-        var fAmount = this.fflogsAmount,
-            fTaken = this.fflogsAmountTaken || 0,
-            fSingle = this.fflogsSingleTargetAmountTaken || 0,
-            fGiven = this.fflogsAmountGiven || 0;
-        this.rdps = pFloat((fAmount - fTaken + fGiven) / this.parent.DURATION);
-        this.adps = pFloat((fAmount - fSingle) / this.parent.DURATION);
-        this.ndps = pFloat((fAmount - fTaken) / this.parent.DURATION);
-        this.cdps = pFloat((fAmount - fSingle + fGiven) / this.parent.DURATION);
-        this.rdpsDelta = pFloat((fAmount - fTaken + fGiven - this.mergedDamage) / this.parent.DURATION);
-        // rDPS% is damagePct's counterpart: this row's share of the raid's rDPS, which is the
-        // share the fight is credited with once raid buffs have been handed back to whoever cast
-        // them. The total comes from js/fflogs/apply.js, over the same table damagePct divides by,
-        // so the two columns can be read against each other. Without it - the parser wrote the
-        // per-row totals but this message predates the encounter one - the column stays out
-        // rather than showing a share of nothing.
-        var fRdpsTotal = this.parent.Encounter ? this.parent.Encounter.fflogsRdps : 0;
-        if (fRdpsTotal > 0)
-            this.rdpsPct = pFloat((fAmount - fTaken + fGiven) / fRdpsTotal * 100);
-    }
-    // gcdUptime is the deliberate exception to the paragraph above: it arrives already divided and
-    // is shown as it came. js/gcd/meter.js measures it once per GCD, at the press, when the interval
-    // it describes has just closed. Dividing its numerator by a duration that keeps ticking would put
-    // the motion back in - the column would slide down through every recast and jump back on the
-    // next press, which is the behaviour reading it at the press is meant to remove.
+    // rdps / adps / ndps / cdps / rdpsDelta / rdpsPct and the five GCD columns are the exception to
+    // every line above: they arrive already divided and are shown exactly as they came. The plugin
+    // measures them against clocks this page does not have - the rDPS family against the fight
+    // minus its downtime, GCD uptime against each player's own presses at the moment of a press -
+    // and dividing either of them again by a duration that keeps ticking would put the motion back
+    // in that measuring them where they are measured is meant to take out.
 
     this["damagePct"] = pFloat(this.mergedDamage / this.parent.Encounter.damage * 100);
     this["healedPct"] = pFloat(this.mergedHealed / this.parent.Encounter.healed * 100);
@@ -760,18 +786,19 @@ function Combatant(e, sortkey) {
     for (var i in e.detail.Combatant) {
         this.users[i] = !0
     }
-    for (var i in e.detail.Encounter) {
+    var encounter = preferFflogs(e.detail.Encounter, fflogsEncounterColumns);
+    for (var i in encounter) {
         if (i == "t" || i == "n") continue;
-        var onlyDec = e.detail.Encounter[i].replace(/[0-9.,%]+/ig, "");
+        var onlyDec = encounter[i].replace(/[0-9.,%]+/ig, "");
         if (onlyDec != "") {
             if (onlyDec == "---" || onlyDec == "--")
                 this.Encounter[i] = 0;
-            else this.Encounter[i] = e.detail.Encounter[i]
+            else this.Encounter[i] = encounter[i]
         } else {
-            var tmp = parseFloat(e.detail.Encounter[i].replace(/[,%]+/ig, "")).nanFix().toFixed(underDot);
-            if (e.detail.Encounter[i].indexOf("%") > 0)
+            var tmp = parseFloat(encounter[i].replace(/[,%]+/ig, "")).nanFix().toFixed(underDot);
+            if (encounter[i].indexOf("%") > 0)
                 this.Encounter[i] = parseFloat(tmp);
-            else if (Math.floor(tmp) != tmp || e.detail.Encounter[i].indexOf(".") > 0)
+            else if (Math.floor(tmp) != tmp || encounter[i].indexOf(".") > 0)
                 this.Encounter[i] = parseFloat(tmp);
             else this.Encounter[i] = parseInt(tmp).nanFix()
         }
@@ -799,9 +826,15 @@ function Combatant(e, sortkey) {
     this.summonerMerge = !0;
     this.sortkey = sortkey;
     this.isActive = e.detail.isActive;
-    // Where the figures came from, as FflogsMeter.overlay() tagged the message: null when the
-    // parser is not loaded at all (and for the settings preview), so the header can stay quiet.
-    this.fflogs = e.detail.fflogs || null;
+    // Whose figures the table is showing, from the plugin's own encounter column. Absent - a
+    // mopimopi with no addon, and the settings preview - leaves it null and the header stays quiet.
+    this.fflogs = e.detail.Encounter && e.detail.Encounter.fflogsApplied !== undefined
+        ? {
+            applied: String(e.detail.Encounter.fflogsApplied) === "1",
+            parserVersion: String(e.detail.Encounter.fflogsParserVersion || ""),
+            downtimeSeconds: pFloat(parseFloat(e.detail.Encounter.fflogsDowntime)),
+        }
+        : null;
     this.combatKey = this.Encounter.title.concat(this.Encounter.damage).concat(this.Encounter.healed);
     this.persons = this.Combatant;
     this.resort()
@@ -1001,12 +1034,6 @@ function oHexColor(str, opacity) {
 function pFloat(num) {
     return parseFloat(num.nanFix().toFixed(underDot))
 }
-// Export variables the retired RdpsOverlay addon used to inject into CombatData. Person drops
-// them on the way in; the same columns are now derived from the FFLogs parser (js/fflogs/).
-var legacyRdpsKeys = {
-    rdpsTotal: 1, adpsTotal: 1, ndpsTotal: 1, cdpsTotal: 1,
-    rdps: 1, adps: 1, ndps: 1, cdps: 1, rdpsDelta: 1, rawdps: 1
-};
 var combatLog = [];
 var combatants = [];
 var curhp = 100;
