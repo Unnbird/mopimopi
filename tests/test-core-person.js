@@ -64,6 +64,10 @@ const combatData = {
 		fflogsDuration: String(duration), fflogsHealDuration: String(healDuration),
 		fflogsDamage: String(9784320 + 9784320 + 500000), fflogsHealed: '1536000',
 		fflogsRdps: '19218384', fflogsDowntime: '60', fflogsApplied: '1', fflogsParserVersion: '3075',
+		// The pull's own clock and id. ACT's duration above restarts at a phase transition; these
+		// do not, which is how the header keeps the pull's time and how a row ACT has momentarily
+		// forgotten is told from a player who left.
+		fflogsDurationText: '08:35', fflogsFightId: '7',
 		// The header totals. Divided in the plugin against the same two clocks the rows were.
 		fflogsEncdps: String(Math.round((9784320 + 9784320 + 500000) / duration)),
 		fflogsEnchps: String(Math.round(1536000 / healDuration)),
@@ -216,17 +220,57 @@ check('and not on ACT\'s figures', summoner.mergedDamage !== 1 + 7777 + 4242, tr
 check('the owner keeps its own rDPS', summoner.rdps, 18000);
 check('the pet has none', demi.rdps, 0);
 
-section('a row FFLogs never saw reads empty - there is no falling back to ACT');
-// The table says what FFLogs says about this pull, or it says nothing. Half a row from each source
-// would put two different measurements of the same pull in adjacent columns.
-check('damage', dummy.damage, 0);
-check('hits', dummy.hits, 0);
-check('healing', dummy.healed, 0);
-check('deaths', dummy.deaths, 0);
-check('no rDPS either', dummy.rdps, 0);
-check("ACT's figures are gone, not kept", dummy.damage !== 123456, true);
+section("a row FFLogs never saw keeps ACT's figures");
+// Empty is the addon saying it measured nothing here, which is not a measurement of nothing. The
+// whole row stays ACT's - and so does the whole table on a pull the parser is not reporting, where
+// every column arrives empty and the alternative is a table of zeros.
+check('damage', dummy.damage, 123456);
+check('hits', dummy.hits, 77);
+check('healing', dummy.healed, 6000);
+check('deaths', dummy.deaths, 2);
+check("and ACT's clock with them", dummy.DURATION, actDuration);
+check('no rDPS, which is FFLogs\' to have', dummy.rdps, 0);
 // GCD uptime is measured off the log lines, not off FFLogs' fight, so it is there regardless.
 check('but GCD uptime is still measured', dummy.gcdUptime, 73.4);
+
+section('the healing block moves on its own');
+// This build of the parser never measures player healing: it marks only NPCs and pets as friendly
+// for its healing meters. The addon reports that as empty rather than as zero, and the healing
+// columns stay ACT's - taking the zeros left healing at 0 next to ACT's shield and overheal, and
+// effective healing went negative.
+const noHealing = JSON.parse(JSON.stringify(combatData));
+for (const row of Object.values(noHealing.Combatant)) {
+	// The figures go; the clock stays, because it belongs to the fight and not to the table.
+	row.fflogsHealed = row.fflogsOverHeal = row.fflogsHeals = row.fflogsCritheals = '';
+	row.fflogsMaxheal = row.fflogsMAXHEAL = row.fflogsHps = '';
+}
+noHealing.Encounter.fflogsHealed = noHealing.Encounter.fflogsEnchps = '';
+const acted = noHealing.Combatant['Fflogs Player'];
+acted.healed = '600000';
+acted.overHeal = '100000';
+acted.heals = '40';
+acted.damageShield = '50000';
+const withHealing = new sandbox.Combatant({ detail: noHealing }, 'encdps');
+withHealing.summonerMerge = true;
+withHealing.AttachPets();
+const healer = withHealing.Combatant['Fflogs Player'];
+check("healing is ACT's", healer.healed, 600000);
+check('overheal too', healer.overHeal, 100000);
+check('and the heal count', healer.heals, 40);
+// The bug: FFLogs' zero healing over ACT's shield and overheal, which are not zero.
+check('effective healing is not negative', healer.effHealed, 600000 - 100000 - 50000);
+check("HPS divides ACT's healing by the fight's clock", healer.hps, Math.round(600000 / healDuration * 100) / 100);
+check("the encounter keeps ACT's healing too", withHealing.Encounter.healed, 1);
+check("while the damage block is still FFLogs'", healer.damage, 9784320);
+check("on the fight's clock", healer.DURATION, duration);
+
+section("the header clock is the pull's, not ACT's encounter");
+// ACT ends its encounter whenever combat drops for its idle timeout, and a scripted phase
+// transition is exactly that - so its clock restarted mid-pull while every figure beside it went
+// on describing the whole fight.
+check('the clock the header prints', parsed.duration, '08:35');
+check("ACT's own is not it", combatData.Encounter.duration, '10:00');
+check('and the row carries it too', reaper.EncounterDuration, '08:35');
 
 section('the encounter row, so D% is a share of the same table');
 check('encounter damage', parsed.Encounter.damage, 9784320 + 9784320 + 500000);
@@ -395,6 +439,41 @@ const untagged = new sandbox.Combatant({ detail: bare }, 'encdps');
 check('no tag', untagged.fflogs, null);
 check('ACT\'s figures throughout', untagged.Combatant['Fflogs Player'].damage, 1);
 check('and ACT\'s clock', untagged.Combatant['Fflogs Player'].DURATION, actDuration);
+
+section("rows ACT forgets mid-pull are carried, rows from another pull are not");
+// ACT lists the combatants of its current encounter, and at a phase transition that encounter is a
+// brand new one: the table emptied and then refilled a player at a time, while every figure in the
+// message was still the whole pull's. Same fight id, same pull, so a row that was here a moment ago
+// is one ACT is about to book again.
+const pullRow = (name, damage) => ({
+	name, Job: 'RPR', DURATION: '100', damage: String(damage), hits: '1', swings: '1', misses: '0',
+	crithits: '0', DirectHitCount: '0', CritDirectHitCount: '0', maxhit: '', MAXHIT: '0',
+	healed: '0', overHeal: '0', heals: '0', critheals: '0', maxheal: '', MAXHEAL: '0', deaths: '0',
+	damagetaken: '0', healstaken: '0',
+});
+const pullMessage = (fightId, names) => ({
+	Encounter: { title: 'M4S', duration: '01:00', DURATION: '100', damage: '2', healed: '0', fflogsFightId: fightId },
+	Combatant: Object.fromEntries(names.map((n, i) => [n, pullRow(n, 100 + i)])),
+	isActive: 'true',
+});
+
+sandbox.carryOverRows(pullMessage('7', ['Alice', 'Bob']));
+const transition = sandbox.carryOverRows(pullMessage('7', ['Alice']));
+check('the row ACT still has', 'Alice' in transition.Combatant, true);
+check('and the one it forgot', 'Bob' in transition.Combatant, true);
+check('with the figures it last had', transition.Combatant['Bob'].damage, '101');
+
+// Still gone two messages later, and still carried.
+const stillGone = sandbox.carryOverRows(pullMessage('7', ['Alice']));
+check('carried again on the next message', 'Bob' in stillGone.Combatant, true);
+
+const nextPull = sandbox.carryOverRows(pullMessage('8', ['Alice']));
+check('a new pull carries nothing', 'Bob' in nextPull.Combatant, false);
+
+// No addon, or a pull the parser is not reporting: no id, and nothing is carried.
+sandbox.carryOverRows(pullMessage('', ['Alice', 'Bob']));
+const noId = sandbox.carryOverRows(pullMessage('', ['Alice']));
+check('no fight id, no carrying', 'Bob' in noId.Combatant, false);
 
 console.log(failures === 0 ? '\n==> all checks passed' : `\n==> ${failures} check(s) FAILED`);
 process.exitCode = failures === 0 ? 0 : 1;

@@ -316,7 +316,7 @@ function onBroadcastMessage(e) {
         // parser and the GCD model in the plugin, off the same log lines ACT is reading, and exports
         // the results as extra columns on this very message; Person picks between them and ACT's own
         // (see preferFflogs). Nothing is computed from log lines here any more.
-        lastCombatRaw = e.detail.msg;
+        lastCombatRaw = carryOverRows(e.detail.msg);
         lastCombat = new Combatant({
             detail: lastCombatRaw
         }, sortKey);
@@ -364,48 +364,89 @@ function onBroadcastMessage(e) {
  * key, never replace one. So both figures travel side by side on the same row, and this is where
  * the FFLogs one takes over.
  *
- * There is no falling back. A column the addon sent is shown as it came, empty included - the table
- * says what FFLogs says about this pull, or it says nothing. Mixing the two sources row by row is
- * what this avoids: FFLogs' rDPS next to ACT's damage is two different measurements of the same
- * pull in adjacent columns, and D% stops adding up to 100%.
+ * It moves in blocks, and a block moves only when the addon actually measured it. Mixing the two
+ * sources column by column is what this avoids: FFLogs' rDPS next to ACT's damage is two different
+ * measurements of one pull in adjacent columns, and D% stops adding up to 100%. But a whole block
+ * the addon has nothing for is not a mixture - it is the only measurement anyone has, and ACT's is
+ * it. An empty column is exactly that statement, and the addon documents it the same way.
  *
- * The one thing that is not overwritten is a column the addon never sent at all. With no addon
- * installed none of these keys exist, nothing is copied, and the page is the plain mopimopi it was
- * before.
+ * Healing is the block that says so. This build of FFLogs' parser marks only NPCs and pets as
+ * friendly for its healing meters, so no player healing ever reaches them; taking its zeros left
+ * the healing columns at 0 while the shield beside them kept ACT's figure, and effective healing
+ * came out negative. Damage is the block that usually arrives whole.
+ *
+ * A column the addon never sent at all is left alone the same way. With no addon installed none of
+ * these keys exist, nothing is copied, and the page is the plain mopimopi it was before.
  */
-var fflogsRowColumns = {
-    fflogsDamage: "damage",
-    fflogsHits: "hits",
-    fflogsCrithits: "crithits",
-    fflogsDirectHitCount: "DirectHitCount",
-    fflogsCritDirectHitCount: "CritDirectHitCount",
-    fflogsMaxhit: "maxhit",
-    fflogsMAXHIT: "MAXHIT",
-    fflogsHealed: "healed",
-    fflogsOverHeal: "overHeal",
-    fflogsHeals: "heals",
-    fflogsCritheals: "critheals",
-    fflogsMaxheal: "maxheal",
-    fflogsMAXHEAL: "MAXHEAL",
-    fflogsDeaths: "deaths",
-    // Two clocks, and they are not the same one: FFLogs divides damage by the fight minus its
-    // downtime and healing by the whole fight. Person.recalculate() reads both.
-    fflogsDuration: "DURATION",
-    fflogsHealDuration: "HEALDURATION"
-}
+var fflogsRowGroups = [
+    {
+        // The clocks. They belong to the fight rather than to either table, so they arrive for a
+        // row FFLogs knows even when one of the tables is empty - ACT's healing divided by the
+        // pull's clock is still a rate over this pull. Two of them, and they are not the same one:
+        // FFLogs divides damage by the fight minus its downtime and healing by the whole fight.
+        lead: "fflogsDuration",
+        columns: {
+            fflogsDuration: "DURATION",
+            fflogsHealDuration: "HEALDURATION"
+        }
+    },
+    {
+        lead: "fflogsDamage",
+        columns: {
+            fflogsDamage: "damage",
+            fflogsHits: "hits",
+            fflogsCrithits: "crithits",
+            fflogsDirectHitCount: "DirectHitCount",
+            fflogsCritDirectHitCount: "CritDirectHitCount",
+            fflogsMaxhit: "maxhit",
+            fflogsMAXHIT: "MAXHIT",
+            fflogsDeaths: "deaths"
+        }
+    },
+    {
+        lead: "fflogsHealed",
+        columns: {
+            fflogsHealed: "healed",
+            fflogsOverHeal: "overHeal",
+            fflogsHeals: "heals",
+            fflogsCritheals: "critheals",
+            fflogsMaxheal: "maxheal",
+            fflogsMAXHEAL: "MAXHEAL"
+        }
+    }
+]
 
 /**
  * The same for the encounter row. D% and the header totals are shares of, and rates over, this
  * table - so they have to come from the same place the rows did or they describe a different pull.
  */
-var fflogsEncounterColumns = {
-    fflogsDamage: "damage",
-    fflogsHealed: "healed",
-    fflogsDuration: "DURATION",
-    fflogsHealDuration: "HEALDURATION",
-    fflogsEncdps: "ENCDPS",
-    fflogsEnchps: "ENCHPS"
-}
+var fflogsEncounterGroups = [
+    {
+        lead: "fflogsDuration",
+        columns: {
+            fflogsDuration: "DURATION",
+            fflogsHealDuration: "HEALDURATION",
+            // The header clock. ACT's own restarts at a phase transition - it ends the encounter
+            // when combat drops and opens another when it resumes - so it read 00:42 over a table
+            // describing fourteen minutes. This one is the pull's.
+            fflogsDurationText: "duration"
+        }
+    },
+    {
+        lead: "fflogsDamage",
+        columns: {
+            fflogsDamage: "damage",
+            fflogsEncdps: "ENCDPS"
+        }
+    },
+    {
+        lead: "fflogsHealed",
+        columns: {
+            fflogsHealed: "healed",
+            fflogsEnchps: "ENCHPS"
+        }
+    }
+]
 
 /**
  * Whether the table is showing the plugin's figures at all.
@@ -441,22 +482,95 @@ function keepFflogsPrecision(target, row) {
 }
 
 /**
+ * The last message this page drew, rows and all, for carryOverRows.
+ */
+var lastCarriedMessage = null;
+
+/** The pull these figures describe, as the addon numbers it; 0 when it is not reporting one. */
+function fflogsFightId(detail) {
+    var encounter = detail && detail.Encounter;
+    if (!encounter || !hasFflogsFigure(encounter, "fflogsFightId")) return 0;
+    var id = parseFloat(encounter.fflogsFightId);
+    return isNaN(id) ? 0 : id;
+}
+
+/**
+ * One CombatData message with the rows ACT has temporarily forgotten put back.
+ *
+ * ACT lists the combatants of its *current* encounter, and it ends an encounter whenever combat
+ * drops for its idle timeout. A scripted phase transition is exactly that, so in M8S the table went
+ * empty at the transition and then refilled one player at a time as each of them hit something -
+ * while every figure in the message was still describing the whole pull, because the addon follows
+ * the parser's fight rather than ACT's encounter.
+ *
+ * So while the pull is the same one, a row that was here a moment ago and is gone now is a row ACT
+ * is about to book again, not a player who left. It keeps the figures it last had, which for the
+ * columns that matter are the whole pull's and have not moved. A new pull changes the fight id and
+ * nothing is carried; with no addon, or a pull it is not reporting, there is no id and this does
+ * nothing at all.
+ */
+function carryOverRows(detail) {
+    var previous = lastCarriedMessage;
+    lastCarriedMessage = detail;
+    if (!detail || typeof detail != "object" || !detail.Combatant) return detail;
+    if (!usingFflogs()) return detail;
+
+    var id = fflogsFightId(detail);
+    if (!id || !previous || !previous.Combatant || fflogsFightId(previous) !== id) return detail;
+
+    var out = null;
+    for (var name in previous.Combatant) {
+        if (name in detail.Combatant) continue;
+        if (out === null) {
+            out = {};
+            for (var k in detail) out[k] = detail[k];
+            out.Combatant = {};
+            for (var row in detail.Combatant) out.Combatant[row] = detail.Combatant[row];
+        }
+        out.Combatant[name] = previous.Combatant[name];
+    }
+
+    if (out === null) return detail;
+    lastCarriedMessage = out;
+    return out;
+}
+
+/**
+ * Whether a column is a figure rather than the addon saying it has none.
+ *
+ * Empty is the addon's word for "FFLogs measured nothing here": a row it does not know, a block it
+ * cannot fill, or a pull its parser is not reporting. Zero is a measurement and moves like any
+ * other - a pet folded into its owner reads zero so that summing the pet row back in cannot count
+ * it twice.
+ */
+function hasFflogsFigure(row, key) {
+    return key in row && row[key] !== "" && row[key] !== null && row[key] !== undefined;
+}
+
+/**
  * A copy of one CombatData row with the addon's figures moved over ACT's, leaving the originals
  * behind. The message itself is not touched: it is dispatched on as onOverlayDataUpdate for anyone
  * else listening, and it should reach them as it arrived.
+ *
+ * Block by block: a block whose lead column is empty is one the addon did not measure, and every
+ * column in it stays ACT's.
  */
-function preferFflogs(row, columns) {
+function preferFflogs(row, groups) {
     if (!row || typeof row != "object") return row;
     if (!usingFflogs()) return row;
 
     var out = null;
-    for (var key in columns) {
-        if (!(key in row)) continue;
-        if (out === null) {
-            out = {};
-            for (var k in row) out[k] = row[k];
+    for (var g = 0; g < groups.length; g++) {
+        var group = groups[g];
+        if (!hasFflogsFigure(row, group.lead)) continue;
+        for (var key in group.columns) {
+            if (!hasFflogsFigure(row, key)) continue;
+            if (out === null) {
+                out = {};
+                for (var k in row) out[k] = row[k];
+            }
+            out[group.columns[key]] = row[key];
         }
-        out[columns[key]] = row[key];
     }
     return out === null ? row : out;
 }
@@ -465,7 +579,7 @@ function Person(e, p) {
     this.EncounterDuration = p.Encounter.duration;
     this.parent = p;
     this.Class = "";
-    e = preferFflogs(e, fflogsRowColumns);
+    e = preferFflogs(e, fflogsRowGroups);
     for (var i in e) {
         if (i.indexOf("NAME") > -1) continue;
         if (i == "t" || i == "n") continue;
@@ -495,7 +609,11 @@ function Person(e, p) {
     // has nothing for sends an empty string and lands on 0, like every other column of its; a
     // mopimopi talking to an older addon, or to no addon, has neither key and keeps dividing for
     // itself below.
-    this.fflogsRate = usingFflogs() && ("fflogsDps" in e);
+    // One flag per block, for the same reason the columns move in blocks: the parser hands over a
+    // damage rate for a pull it is reporting and no healing rate at all, and dividing is still the
+    // right thing to do for the half it did not measure.
+    this.fflogsRate = usingFflogs() && hasFflogsFigure(e, "fflogsDps");
+    this.fflogsHealRate = usingFflogs() && hasFflogsFigure(e, "fflogsHps");
     if (this.fflogsDps == undefined) this.fflogsDps = 0;
     if (this.fflogsHps == undefined) this.fflogsHps = 0;
     if (this.DURATION <= 0) {
@@ -792,10 +910,15 @@ Person.prototype.recalculate = function () {
         // here, as are hps and enchps. The pets' rates were merged in above, which leaves the
         // owner's row carrying the folded rate rDPS is a rate on.
         this.dps = this.encdps = pFloat(this.mergedFflogsDps);
-        this.hps = this.enchps = pFloat(this.mergedFflogsHps);
     } else {
         this.dps = pFloat(this.mergedDamage / dur);
         this.encdps = pFloat(this.mergedDamage / encdur);
+    }
+    if (this.fflogsHealRate) {
+        this.hps = this.enchps = pFloat(this.mergedFflogsHps);
+    } else {
+        // ACT's healing, over whichever clock reached this row: the fight's when the addon sent one,
+        // ACT's own when it did not.
         this.hps = pFloat(this.mergedHealed / hdur);
         this.enchps = pFloat(this.mergedHealed / enchdur);
     }
@@ -845,7 +968,7 @@ function Combatant(e, sortkey) {
     for (var i in e.detail.Combatant) {
         this.users[i] = !0
     }
-    var encounter = preferFflogs(e.detail.Encounter, fflogsEncounterColumns);
+    var encounter = preferFflogs(e.detail.Encounter, fflogsEncounterGroups);
     for (var i in encounter) {
         if (i == "t" || i == "n") continue;
         var onlyDec = encounter[i].replace(/[0-9.,%]+/ig, "");
